@@ -37,6 +37,10 @@ class FTPDownloaderApp(QMainWindow):
     def __init__(self):
         super().__init__()
         self.setWindowTitle(APP_DESCRIPTION)
+        
+        # Set window icon
+        self._set_window_icon()
+        
         self.setGeometry(100, 100, 900, 800)
 
         # Core components
@@ -157,6 +161,102 @@ class FTPDownloaderApp(QMainWindow):
         control_layout.addLayout(status_layout)
         parent_layout.addLayout(control_layout)
 
+    def _set_window_icon(self):
+        """Set the window icon from the icon.ico file."""
+        try:
+            app_icon_path = self._resolve_resource_path('icon.ico')
+            if app_icon_path and os.path.exists(app_icon_path):
+                icon = QIcon(app_icon_path)
+                if not icon.isNull():
+                    self.setWindowIcon(icon)
+                    return
+            
+            # If icon.ico not found or invalid, try alternative paths
+            alternative_paths = [
+                'icon.png',
+                'assets/icon.ico',
+                'assets/icon.png',
+                '../icon.ico',
+                '../icon.png'
+            ]
+            
+            for alt_path in alternative_paths:
+                alt_icon_path = self._resolve_resource_path(alt_path)
+                if alt_icon_path and os.path.exists(alt_icon_path):
+                    icon = QIcon(alt_icon_path)
+                    if not icon.isNull():
+                        self.setWindowIcon(icon)
+                        return
+            
+            # Fallback to system icon if no custom icon found
+            self.setWindowIcon(self.style().standardIcon(self.style().StandardPixmap.SP_ComputerIcon))
+            
+        except Exception as e:
+            # Final fallback - use system icon
+            try:
+                self.setWindowIcon(self.style().standardIcon(self.style().StandardPixmap.SP_ComputerIcon))
+            except Exception:
+                pass  # Give up on setting icon
+
+    def _resolve_resource_path(self, rel_path: str) -> str:
+        """Return an absolute path to a resource shipped with the app.
+
+        Works both for development (filesystem) and for PyInstaller bundles.
+        """
+        try:
+            # If frozen (PyInstaller), resources are under _MEIPASS
+            if getattr(sys, 'frozen', False):
+                base = getattr(sys, '_MEIPASS', os.path.dirname(sys.executable))
+            else:
+                # project root is two levels up from src/gui (ftp-tool directory)
+                base = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
+            candidate = os.path.join(base, rel_path)
+            return candidate
+        except Exception:
+            return rel_path
+
+    def _set_tray_icon(self):
+        """Set the system tray icon, preferring custom icon over system icons."""
+        try:
+            # Try to use the same custom icon as the window
+            app_icon_path = self._resolve_resource_path('icon.ico')
+            if app_icon_path and os.path.exists(app_icon_path):
+                icon = QIcon(app_icon_path)
+                if not icon.isNull():
+                    self.tray_icon.setIcon(icon)
+                    return
+            
+            # Try alternative paths
+            alternative_paths = [
+                'icon.png',
+                'assets/icon.ico', 
+                'assets/icon.png',
+                '../icon.ico',
+                '../icon.png'
+            ]
+            
+            for alt_path in alternative_paths:
+                alt_icon_path = self._resolve_resource_path(alt_path)
+                if alt_icon_path and os.path.exists(alt_icon_path):
+                    icon = QIcon(alt_icon_path)
+                    if not icon.isNull():
+                        self.tray_icon.setIcon(icon)
+                        return
+            
+            # Fallback to system icons
+            try:
+                self.tray_icon.setIcon(self.style().standardIcon(self.style().StandardPixmap.SP_ComputerIcon))
+            except AttributeError:
+                # Final fallback
+                self.tray_icon.setIcon(self.style().standardIcon(self.style().StandardPixmap.SP_DriveHDIcon))
+                
+        except Exception:
+            # Last resort fallback
+            try:
+                self.tray_icon.setIcon(self.style().standardIcon(self.style().StandardPixmap.SP_DriveHDIcon))
+            except Exception:
+                pass  # Give up on setting tray icon
+
     def _create_system_tray_icon(self):
         """Create system tray icon and menu."""
         if not QSystemTrayIcon.isSystemTrayAvailable():
@@ -169,12 +269,10 @@ class FTPDownloaderApp(QMainWindow):
         except Exception:
             # If icon generation fails, fall back to standard icons
             pass
-        # Use a more compatible icon
-        try:
-            self.tray_icon.setIcon(self.style().standardIcon(self.style().StandardPixmap.SP_ComputerIcon))
-        except AttributeError:
-            # Fallback to a simple icon if SP_ComputerIcon is not available
-            self.tray_icon.setIcon(self.style().standardIcon(self.style().StandardPixmap.SP_DriveHDIcon))
+            
+        # Try to use the same custom icon as the window
+        self._set_tray_icon()
+        
         # Create tray menu
         tray_menu = QMenu()
 
