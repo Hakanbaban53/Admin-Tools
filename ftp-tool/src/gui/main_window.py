@@ -2,14 +2,16 @@
 
 import sys
 import os
+import platform
+import subprocess
 from datetime import datetime
 
 from PySide6.QtWidgets import (
     QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
     QTabWidget, QLabel, QPushButton, QMessageBox, QSystemTrayIcon, QMenu
 )
-from PySide6.QtCore import QThread
-from PySide6.QtGui import QAction
+from PySide6.QtCore import QThread, QTimer
+from PySide6.QtGui import QAction, QIcon, QPixmap, QPainter, QColor, QBrush, QPen
 from ftplib import FTP
 import smtplib
 from email.mime.text import MIMEText
@@ -74,12 +76,6 @@ class FTPDownloaderApp(QMainWindow):
                 self.start_monitor()
             except Exception:
                 self.logger.exception("Failed to auto-start monitoring")
-        # Handle startup options
-        if "--startup" in sys.argv:
-            try:
-                self.hide()
-            except Exception:
-                self.logger.exception("Failed to hide main window")
 
     def _create_widgets(self):
         """Create the main UI widgets."""
@@ -167,6 +163,12 @@ class FTPDownloaderApp(QMainWindow):
             return
 
         self.tray_icon = QSystemTrayIcon(self)
+        # Initialize generated icons and blink timer
+        try:
+            self._init_tray_icons()
+        except Exception:
+            # If icon generation fails, fall back to standard icons
+            pass
         # Use a more compatible icon
         try:
             self.tray_icon.setIcon(self.style().standardIcon(self.style().StandardPixmap.SP_ComputerIcon))
@@ -257,24 +259,126 @@ class FTPDownloaderApp(QMainWindow):
                 except Exception:
                     pass
 
-            # Visual icon changes for quick recognition
+            # Visual icon changes for quick recognition (use generated icons if available)
             if hasattr(self, 'tray_icon'):
                 try:
-                    sp = None
                     st = status.lower() if isinstance(status, str) else ''
-                    if 'monitor' in st or 'running' in st:
-                        sp = self.style().standardIcon(self.style().StandardPixmap.SP_ComputerIcon)
-                    elif 'error' in st or 'failed' in st:
-                        sp = self.style().standardIcon(self.style().StandardPixmap.SP_MessageBoxCritical)
-                    else:
-                        # Idle/Stopped/default
-                        sp = self.style().standardIcon(self.style().StandardPixmap.SP_DriveHDIcon)
 
-                    if sp is not None:
+                    # Stop any blinking unless explicitly required
+                    try:
+                        if hasattr(self, '_tray_blink_timer'):
+                            self._tray_blink_timer.stop()
+                    except Exception:
+                        pass
+
+                    # Choose icon and behavior
+                    if 'monitor' in st or 'running' in st:
+                        # Start blinking between two monitoring icons for visibility
+                        if hasattr(self, '_tray_icons') and 'monitor_on' in self._tray_icons:
+                            # Ensure blink state starts
+                            try:
+                                self._tray_blink_state = False
+                                if hasattr(self, '_tray_blink_timer'):
+                                    self._tray_blink_timer.start()
+                            except Exception:
+                                pass
+                        else:
+                            # Fallback to a standard icon
+                            try:
+                                sp = self.style().standardIcon(self.style().StandardPixmap.SP_ComputerIcon)
+                                self.tray_icon.setIcon(sp)
+                            except Exception:
+                                pass
+
+                    elif 'error' in st or 'failed' in st:
+                        # Show an error icon and a brief notification
                         try:
-                            self.tray_icon.setIcon(sp)
+                            if hasattr(self, '_tray_icons') and 'error' in self._tray_icons:
+                                self.tray_icon.setIcon(self._tray_icons['error'])
+                            else:
+                                sp = self.style().standardIcon(self.style().StandardPixmap.SP_MessageBoxCritical)
+                                self.tray_icon.setIcon(sp)
                         except Exception:
                             pass
+                        # Optionally pop up a notification for errors
+                        try:
+                            app_settings = self.app_tab.get_settings()
+                            if app_settings.get('EnableStatusNotifications', False):
+                                self.tray_icon.showMessage(APP_NAME, f"Error: {status}", QSystemTrayIcon.Critical, 4000)
+                        except Exception:
+                            pass
+
+                    else:
+                        # Idle/Stopped/default icon
+                        try:
+                            if hasattr(self, '_tray_icons') and 'idle' in self._tray_icons:
+                                self.tray_icon.setIcon(self._tray_icons['idle'])
+                            else:
+                                sp = self.style().standardIcon(self.style().StandardPixmap.SP_DriveHDIcon)
+                                self.tray_icon.setIcon(sp)
+                        except Exception:
+                            pass
+                except Exception:
+                    pass
+        except Exception:
+            pass
+
+    def _init_tray_icons(self):
+        """Generate small tray icons programmatically to avoid external assets.
+
+        Creates: idle, monitor_on, monitor_off, error
+        """
+        # small square pixmap size appropriate for system tray
+        size = 32
+        icons = {}
+
+        def make_pix(color: QColor, mark: str = None):
+            pix = QPixmap(size, size)
+            pix.fill(QColor(0, 0, 0, 0))
+            p = QPainter(pix)
+            p.setRenderHint(QPainter.Antialiasing)
+            # background circle
+            p.setBrush(QBrush(color))
+            p.setPen(QPen(QColor(0, 0, 0, 0)))
+            r = 4
+            p.drawEllipse(r, r, size - 2 * r, size - 2 * r)
+            # optional small mark (e.g., exclamation)
+            if mark == '!':
+                p.setPen(QPen(QColor('white')))
+                p.setBrush(QBrush(QColor('white')))
+                # draw small rectangle as exclamation base
+                p.drawRect(size // 2 - 2, size // 4, 4, size // 2 - 6)
+                p.drawRect(size // 2 - 2, size - size // 6 - 2, 4, 4)
+            p.end()
+            return QIcon(pix)
+
+        # Idle: gray
+        icons['idle'] = make_pix(QColor('#6c757d'))
+        # Monitoring on: green
+        icons['monitor_on'] = make_pix(QColor('#28a745'))
+        # Monitoring off (alternate): light green / transparent
+        icons['monitor_off'] = make_pix(QColor('#74d67a'))
+        # Error: red with exclamation
+        icons['error'] = make_pix(QColor('#dc3545'), mark='!')
+
+        self._tray_icons = icons
+        # Blink timer to toggle monitoring icon
+        self._tray_blink_timer = QTimer(self)
+        self._tray_blink_timer.setInterval(700)
+        self._tray_blink_timer.timeout.connect(self._on_tray_blink)
+        self._tray_blink_state = False
+
+    def _on_tray_blink(self):
+        """Toggle tray icon between monitor_on and monitor_off icons."""
+        try:
+            if not hasattr(self, '_tray_icons'):
+                return
+            self._tray_blink_state = not getattr(self, '_tray_blink_state', False)
+            icon_key = 'monitor_on' if self._tray_blink_state else 'monitor_off'
+            icon = self._tray_icons.get(icon_key)
+            if icon:
+                try:
+                    self.tray_icon.setIcon(icon)
                 except Exception:
                     pass
         except Exception:
@@ -447,12 +551,147 @@ class FTPDownloaderApp(QMainWindow):
         server.quit()
 
     def _apply_autostart(self):
-        """Apply autostart settings."""
+        """Apply autostart settings using Windows Registry."""
+        import platform
+        from pathlib import Path
+
         try:
-            # This would implement Windows registry or Linux autostart logic
-            QMessageBox.information(self, "Autostart", "Autostart functionality not yet implemented for this platform.")
+            app_settings = self.app_tab.get_settings()
+            enabled = bool(app_settings.get('StartWithWindows', False))
+
+            system = platform.system()
+
+            # Resolve target executable and script for autostart
+            main_script = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', 'main.py'))
+            
+            if getattr(sys, 'frozen', False):
+                # Running as compiled executable
+                target_executable = sys.executable
+                args_str = '--tray'
+                display_name = "FTP Monitor"
+            else:
+                # Running as Python script
+                target_executable = sys.executable or 'python'
+                args_str = f'"{main_script}" --tray'
+                display_name = "FTP Monitor (Dev)"
+
+            if system == 'Windows':
+                self._apply_registry_autostart(enabled, target_executable, args_str, display_name)
+
+            elif system == 'Linux':
+                # Use XDG autostart .desktop entry
+                autostart_dir = Path.home() / '.config' / 'autostart'
+                autostart_dir.mkdir(parents=True, exist_ok=True)
+                desktop_path = autostart_dir / 'ftp-monitor.desktop'
+
+                if enabled:
+                    exec_cmd = f"{target_executable} '{main_script}' --tray"
+                    content = (
+                        "[Desktop Entry]\n"
+                        "Type=Application\n"
+                        f"Name=FTP Monitor\n"
+                        f"Exec={exec_cmd}\n"
+                        "X-GNOME-Autostart-enabled=true\n"
+                    )
+                    try:
+                        desktop_path.write_text(content, encoding='utf-8')
+                        QMessageBox.information(self, 'Autostart', 'Autostart entry created.')
+                        self.logger.info('Autostart .desktop created')
+                    except Exception as e:
+                        self.logger.exception('Failed to create autostart .desktop')
+                        QMessageBox.warning(self, 'Autostart', f'Failed to create autostart entry: {e}')
+                else:
+                    try:
+                        if desktop_path.exists():
+                            desktop_path.unlink()
+                            QMessageBox.information(self, 'Autostart', 'Autostart entry removed.')
+                            self.logger.info('Autostart .desktop removed')
+                        else:
+                            QMessageBox.information(self, 'Autostart', 'No autostart entry found to remove.')
+                    except Exception as e:
+                        self.logger.exception('Failed to remove autostart .desktop')
+                        QMessageBox.warning(self, 'Autostart', f'Failed to remove autostart entry: {e}')
+
+            elif system == 'Darwin':
+                # macOS: create/remove a LaunchAgent plist in ~/Library/LaunchAgents
+                launch_dir = Path.home() / 'Library' / 'LaunchAgents'
+                launch_dir.mkdir(parents=True, exist_ok=True)
+                plist_path = launch_dir / 'com.ftpmonitor.startup.plist'
+
+                if enabled:
+                    plist = f"""<?xml version='1.0' encoding='UTF-8'?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+  <dict>
+    <key>Label</key>
+    <string>com.ftpmonitor.startup</string>
+    <key>ProgramArguments</key>
+    <array>
+      <string>{target_executable}</string>
+      <string>{main_script}</string>
+      <string>--tray</string>
+    </array>
+    <key>RunAtLoad</key>
+    <true/>
+  </dict>
+</plist>
+"""
+                    try:
+                        plist_path.write_text(plist, encoding='utf-8')
+                        QMessageBox.information(self, 'Autostart', 'LaunchAgent created. You may need to load it with launchctl load.')
+                        self.logger.info('LaunchAgent plist created')
+                    except Exception as e:
+                        self.logger.exception('Failed to create LaunchAgent plist')
+                        QMessageBox.warning(self, 'Autostart', f'Failed to create LaunchAgent plist: {e}')
+                else:
+                    try:
+                        if plist_path.exists():
+                            plist_path.unlink()
+                            QMessageBox.information(self, 'Autostart', 'LaunchAgent removed.')
+                            self.logger.info('LaunchAgent plist removed')
+                        else:
+                            QMessageBox.information(self, 'Autostart', 'No LaunchAgent found to remove.')
+                    except Exception as e:
+                        self.logger.exception('Failed to remove LaunchAgent plist')
+                        QMessageBox.warning(self, 'Autostart', f'Failed to remove LaunchAgent plist: {e}')
+
+            else:
+                QMessageBox.information(self, 'Autostart', f'Autostart not implemented for platform: {system}')
+
         except Exception as e:
-            QMessageBox.warning(self, "Autostart", f"Failed to apply autostart: {e}")
+            self.logger.exception('Failed to apply autostart')
+            QMessageBox.warning(self, 'Autostart', f'Failed to apply autostart: {e}')
+
+    def _apply_registry_autostart(self, enabled: bool, target_executable: str, args_str: str, display_name: str):
+        """Apply autostart using Windows Registry (Run key)."""
+        import winreg
+        
+        try:
+            # Open the Run key in HKEY_CURRENT_USER
+            key_path = r"Software\Microsoft\Windows\CurrentVersion\Run"
+            with winreg.OpenKey(winreg.HKEY_CURRENT_USER, key_path, 0, winreg.KEY_ALL_ACCESS) as key:
+                if enabled:
+                    # Create registry entry
+                    if args_str:
+                        command = f'"{target_executable}" {args_str}'
+                    else:
+                        command = f'"{target_executable}"'
+                    
+                    winreg.SetValueEx(key, display_name, 0, winreg.REG_SZ, command)
+                    self.logger.info(f'Registry autostart entry created: {command}')
+                    QMessageBox.information(self, 'Autostart', 'Registry startup entry created successfully!')
+                else:
+                    # Remove registry entry
+                    try:
+                        winreg.DeleteValue(key, display_name)
+                        self.logger.info('Registry autostart entry removed')
+                        QMessageBox.information(self, 'Autostart', 'Registry startup entry removed successfully!')
+                    except FileNotFoundError:
+                        QMessageBox.information(self, 'Autostart', 'No registry startup entry found to remove.')
+                        
+        except Exception as e:
+            self.logger.exception('Failed to modify registry autostart')
+            QMessageBox.warning(self, 'Autostart', f'Failed to modify registry startup: {e}')
 
     def _open_logs_folder(self):
         """Open the logs folder in the system file manager."""
@@ -772,8 +1011,4 @@ class FTPDownloaderApp(QMainWindow):
         elif cur == ThemeType.LIGHT:
             self.theme_button.setText("🌙 Dark")
             self.theme_button.setToolTip("Switch to Dark theme")
-        else:
-            # AUTO / follow system
-            self.theme_button.setText("🖥️ Auto")
-            self.theme_button.setToolTip("Follow system theme (Auto)")
 

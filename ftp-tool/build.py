@@ -96,7 +96,7 @@ block_cipher = None
 
 a = Analysis(
     ['main.py'],
-    pathex=['{self.project_root}'],
+    pathex=[r'{self.project_root}'],
     binaries=[],
     datas=[
         ('src', 'src'),
@@ -156,7 +156,7 @@ exe = EXE(
     target_arch=None,
     codesign_identity=None,
     entitlements_file=None,
-    icon='{icon_path}',
+    icon=r'{icon_path}',
 )
 '''
         

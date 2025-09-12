@@ -14,6 +14,13 @@ except ImportError as e:
 def main(argv=None):
     """Main application entry point."""
     argv = argv or sys.argv
+    # Simple arg handling for tray mode
+    tray_mode = False
+    if '-tray' in argv or '--tray' in argv:
+        tray_mode = True
+        # Remove from args passed to QApplication to avoid confusion
+        argv = [a for a in argv if a not in ('-tray', '--tray')]
+
     app = QApplication(argv)
 
     # Install simple signal handlers to ensure graceful shutdown in long-running deployments
@@ -32,7 +39,8 @@ def main(argv=None):
             pass
 
     window = FTPDownloaderApp()
-    window.show()
+    if not tray_mode:
+        window.show()
     return app.exec()
 
 
