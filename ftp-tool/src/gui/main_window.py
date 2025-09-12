@@ -34,7 +34,7 @@ from .application_settings_tab import ApplicationSettingsTab
 class FTPDownloaderApp(QMainWindow):
     """Main FTP downloader application window."""
 
-    def __init__(self):
+    def __init__(self, argv=None):
         super().__init__()
         self.setWindowTitle(APP_DESCRIPTION)
         
@@ -80,6 +80,13 @@ class FTPDownloaderApp(QMainWindow):
                 self.start_monitor()
             except Exception:
                 self.logger.exception("Failed to auto-start monitoring")
+
+                # Handle startup options
+        if argv and "--tray" in argv:
+            try:
+                self.hide()
+            except Exception:
+                self.logger.exception("Failed to hide main window")
 
     def _create_widgets(self):
         """Create the main UI widgets."""

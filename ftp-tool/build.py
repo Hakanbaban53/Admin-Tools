@@ -101,6 +101,7 @@ a = Analysis(
     datas=[
         ('src', 'src'),
         ('AppSettings.json', '.'),
+        ('icon.ico', '.'),
     ],
     hiddenimports=[
         'PySide6.QtCore',

@@ -38,9 +38,12 @@ def main(argv=None):
             # Some platforms or embedding contexts might not allow setting handlers; ignore
             pass
 
-    window = FTPDownloaderApp()
+    window = FTPDownloaderApp(argv)
     if not tray_mode:
         window.show()
+    else:
+        # In tray mode, don't show window initially
+        pass
     return app.exec()
 
 
