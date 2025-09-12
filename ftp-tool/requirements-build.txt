@@ -1,0 +1,18 @@
+# FTP Tool Build Requirements
+# Install these packages for building standalone executables
+
+# Core application dependencies
+PySide6>=6.4.0
+ftplib2
+
+# Build dependencies  
+PyInstaller>=5.0.0
+setuptools>=65.0.0
+
+# Optional: UPX for executable compression
+# Note: UPX must be installed separately on the system
+# Download from: https://upx.github.io/
+
+# Development dependencies (optional)
+wheel>=0.38.0
+twine>=4.0.0
