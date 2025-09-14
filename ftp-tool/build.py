@@ -90,7 +90,7 @@ class CrossPlatformBuilder:
         elif (self.project_root / "icon.png").exists():
             icon_path = str(self.project_root / "icon.png")
             
-    spec_content = f'''# -*- mode: python ; coding: utf-8 -*-
+        spec_content = f'''# -*- mode: python ; coding: utf-8 -*-
 
 block_cipher = None
 
@@ -159,11 +159,11 @@ exe = EXE(
     entitlements_file=None,
     icon=r'{icon_path}',
 )
-'''
-        
+        '''
+
         with open(self.spec_file, 'w') as f:
             f.write(spec_content)
-            
+
         print(f"   Created: {self.spec_file}")
         
     def build_executable(self, console_mode=False, debug=False):
@@ -180,9 +180,7 @@ exe = EXE(
             cmd.append('--debug=all')
         else:
             cmd.append('--log-level=WARN')
-        # Prevent UPX compression which can corrupt some binary plugins (Qt/PySide6)
-        cmd.append('--noupx')
-            
+    # Note: --noupx not passed when using a spec file (spec sets upx=False)
         cmd.append(str(self.spec_file))
         
         print(f"   Running: {' '.join(cmd)}")
