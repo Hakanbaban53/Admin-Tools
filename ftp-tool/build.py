@@ -90,7 +90,7 @@ class CrossPlatformBuilder:
         elif (self.project_root / "icon.png").exists():
             icon_path = str(self.project_root / "icon.png")
             
-        spec_content = f'''# -*- mode: python ; coding: utf-8 -*-
+    spec_content = f'''# -*- mode: python ; coding: utf-8 -*-
 
 block_cipher = None
 
@@ -148,10 +148,10 @@ exe = EXE(
     debug=False,
     bootloader_ignore_signals=False,
     strip=False,
-    upx=True,
+    upx=False,
     upx_exclude=[],
     runtime_tmpdir=None,
-    console={'True' if console_mode else 'False'},
+    console={True if console_mode else False},
     disable_windowed_traceback=False,
     argv_emulation=False,
     target_arch=None,
@@ -180,6 +180,8 @@ exe = EXE(
             cmd.append('--debug=all')
         else:
             cmd.append('--log-level=WARN')
+        # Prevent UPX compression which can corrupt some binary plugins (Qt/PySide6)
+        cmd.append('--noupx')
             
         cmd.append(str(self.spec_file))
         
