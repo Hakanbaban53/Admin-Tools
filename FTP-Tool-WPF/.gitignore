@@ -1,0 +1,61 @@
+# Visual Studio / .NET gitignore
+# Ignore Visual Studio temporary files, build results, and user-specific files
+.vs/
+.vscode/
+*.suo
+*.tmp
+*.user
+*.userosscache
+*.sln.docstates
+
+# Build results
+[Bb]in/
+[Oo]bj/
+out/
+artifacts/
+publish/
+*.ilk
+*.meta
+*.obj
+*.o
+
+# NuGet
+packages/
+*.nupkg
+*.snupkg
+*.nuspec
+project.lock.json
+project.fragment.lock.json
+packages.lock.json
+
+# Rider / JetBrains
+.idea/
+*.sln.iml
+*.DotSettings.user
+_ReSharper*/
+*.DotSettings
+
+# Test results
+TestResults/
+coverage/
+*.coverage
+*.coveragexml
+*.trx
+*.testsettings
+
+# Logs
+*.log
+
+# OS generated files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# User secrets (if accidentally added)
+secrets.json
+
+# Other
+*.userprefs
+*.vsix
+*.db
+*.bak

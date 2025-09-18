@@ -1,0 +1,734 @@
+﻿<Window x:Class="FTP_Tool.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="FTP File Monitor - Linux to Windows" Height="700" Width="1200" MinWidth="900" MinHeight="600"
+        FontFamily="Segoe UI" Background="#F3F2F1">
+
+    <Window.Resources>
+        <!-- Modern Button Style -->
+        <Style x:Key="ModernButton" TargetType="Button">
+            <Setter Property="Padding" Value="20,10"/>
+            <Setter Property="Margin" Value="4"/>
+            <Setter Property="MinWidth" Value="100"/>
+            <Setter Property="Background" Value="#0078D4"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="FontSize" Value="14"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="bd" Background="{TemplateBinding Background}" 
+                                BorderThickness="{TemplateBinding BorderThickness}" 
+                                CornerRadius="6" Padding="{TemplateBinding Padding}">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="bd" Property="Background" Value="#106EBE"/>
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="bd" Property="Background" Value="#005A9E"/>
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter TargetName="bd" Property="Background" Value="#E1E1E1"/>
+                                <Setter Property="Foreground" Value="#888"/>
+                                <Setter Property="Cursor" Value="Arrow"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- Secondary Button Style -->
+        <Style x:Key="SecondaryButton" TargetType="Button" BasedOn="{StaticResource ModernButton}">
+            <Setter Property="Background" Value="#FFFFFF"/>
+            <Setter Property="Foreground" Value="#323130"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="BorderBrush" Value="#D1D1D1"/>
+            <Style.Triggers>
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Setter Property="Background" Value="#F3F2F1"/>
+                    <Setter Property="BorderBrush" Value="#C8C6C4"/>
+                </Trigger>
+                <Trigger Property="IsPressed" Value="True">
+                    <Setter Property="Background" Value="#EDEBE9"/>
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+
+        <!-- Danger Button Style -->
+        <Style x:Key="DangerButton" TargetType="Button" BasedOn="{StaticResource ModernButton}">
+            <Setter Property="Background" Value="#D13438"/>
+            <Style.Triggers>
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Setter Property="Background" Value="#B02E31"/>
+                </Trigger>
+                <Trigger Property="IsPressed" Value="True">
+                    <Setter Property="Background" Value="#A2262A"/>
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+
+        <!-- Sidebar Navigation Button Style -->
+        <Style x:Key="NavButton" TargetType="Button">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="Foreground" Value="#605E5C"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Padding" Value="20,16"/>
+            <Setter Property="HorizontalAlignment" Value="Stretch"/>
+            <Setter Property="HorizontalContentAlignment" Value="Left"/>
+            <Setter Property="FontSize" Value="14"/>
+            <Setter Property="FontWeight" Value="Medium"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="bd" Background="{TemplateBinding Background}" 
+                                Padding="{TemplateBinding Padding}"
+                                CornerRadius="0,25,25,0"
+                                Margin="0,0,16,4">
+                            <StackPanel Orientation="Horizontal">
+                                <ContentPresenter/>
+                            </StackPanel>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="bd" Property="Background" Value="#F3F2F1"/>
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="bd" Property="Background" Value="#EDEBE9"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- Active Navigation Button Style -->
+        <Style x:Key="NavButtonActive" TargetType="Button" BasedOn="{StaticResource NavButton}">
+            <Setter Property="Background" Value="#E3F2FD"/>
+            <Setter Property="Foreground" Value="#0078D4"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+        </Style>
+
+        <!-- Modern Card Style -->
+        <Style x:Key="ModernCard" TargetType="Border">
+            <Setter Property="CornerRadius" Value="8"/>
+            <Setter Property="Background" Value="White"/>
+            <Setter Property="Padding" Value="20"/>
+            <Setter Property="Margin" Value="0,0,0,16"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="BorderBrush" Value="#E1DFDD"/>
+            <Setter Property="Effect">
+                <Setter.Value>
+                    <DropShadowEffect BlurRadius="6" Opacity="0.1" ShadowDepth="2"/>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- Modern TextBox Style -->
+        <Style x:Key="ModernTextBox" TargetType="TextBox">
+            <Setter Property="Padding" Value="12,8"/>
+            <Setter Property="FontSize" Value="14"/>
+            <Setter Property="BorderThickness" Value="2"/>
+            <Setter Property="BorderBrush" Value="#D1D1D1"/>
+            <Setter Property="Background" Value="White"/>
+            <Setter Property="VerticalContentAlignment" Value="Center"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="TextBox">
+                        <Border x:Name="border" BorderBrush="{TemplateBinding BorderBrush}" 
+                                BorderThickness="{TemplateBinding BorderThickness}" 
+                                Background="{TemplateBinding Background}" 
+                                CornerRadius="4" SnapsToDevicePixels="True">
+                            <ScrollViewer x:Name="PART_ContentHost" Focusable="false" 
+                                          HorizontalScrollBarVisibility="Hidden" 
+                                          VerticalScrollBarVisibility="Hidden"
+                                          Margin="{TemplateBinding Padding}"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsFocused" Value="true">
+                                <Setter TargetName="border" Property="BorderBrush" Value="#0078D4"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- Modern PasswordBox Style -->
+        <Style x:Key="ModernPasswordBox" TargetType="PasswordBox">
+            <Setter Property="Padding" Value="12,8"/>
+            <Setter Property="FontSize" Value="14"/>
+            <Setter Property="BorderThickness" Value="2"/>
+            <Setter Property="BorderBrush" Value="#D1D1D1"/>
+            <Setter Property="Background" Value="White"/>
+            <Setter Property="VerticalContentAlignment" Value="Center"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="PasswordBox">
+                        <Border x:Name="border" BorderBrush="{TemplateBinding BorderBrush}" 
+                                BorderThickness="{TemplateBinding BorderThickness}" 
+                                Background="{TemplateBinding Background}" 
+                                CornerRadius="4" SnapsToDevicePixels="True">
+                            <ScrollViewer x:Name="PART_ContentHost" Focusable="false" 
+                                          HorizontalScrollBarVisibility="Hidden" 
+                                          VerticalScrollBarVisibility="Hidden"
+                                          Margin="{TemplateBinding Padding}"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsFocused" Value="true">
+                                <Setter TargetName="border" Property="BorderBrush" Value="#0078D4"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- Text Styles -->
+        <Style x:Key="HeaderText" TargetType="TextBlock">
+            <Setter Property="FontSize" Value="16"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="Foreground" Value="#323130"/>
+            <Setter Property="Margin" Value="0,0,0,16"/>
+        </Style>
+
+        <Style x:Key="LabelText" TargetType="TextBlock">
+            <Setter Property="FontSize" Value="14"/>
+            <Setter Property="Foreground" Value="#605E5C"/>
+            <Setter Property="VerticalAlignment" Value="Center"/>
+        </Style>
+
+        <Style x:Key="StatusText" TargetType="TextBlock">
+            <Setter Property="FontSize" Value="14"/>
+            <Setter Property="Foreground" Value="#323130"/>
+        </Style>
+
+        <Style x:Key="PageTitle" TargetType="TextBlock">
+            <Setter Property="FontSize" Value="28"/>
+            <Setter Property="FontWeight" Value="Bold"/>
+            <Setter Property="Foreground" Value="#323130"/>
+            <Setter Property="Margin" Value="0,0,0,8"/>
+        </Style>
+
+        <Style x:Key="PageSubtitle" TargetType="TextBlock">
+            <Setter Property="FontSize" Value="14"/>
+            <Setter Property="Foreground" Value="#605E5C"/>
+            <Setter Property="Margin" Value="0,0,0,24"/>
+        </Style>
+    </Window.Resources>
+
+    <Grid>
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition x:Name="SidebarColumn" Width="260"/>
+            <ColumnDefinition Width="*"/>
+        </Grid.ColumnDefinitions>
+
+        <!-- Sidebar Navigation -->
+        <Border x:Name="SidebarBorder" Grid.Column="0" Background="#FAFAFA" BorderBrush="#E1DFDD" BorderThickness="0,0,1,0">
+            <StackPanel>
+                <!-- App Logo/Title -->
+                <Border Background="#0078D4" Padding="20">
+                    <StackPanel>
+                        <TextBlock Text="FTP Monitor" FontSize="18" FontWeight="Bold" Foreground="White"/>
+                        <TextBlock Text="File Transfer Tool" FontSize="12" Foreground="#E1F5FE"/>
+                    </StackPanel>
+                </Border>
+
+                <!-- Navigation Menu -->
+                <StackPanel Margin="0,20,0,0">
+                    <Button x:Name="btnNavMonitor" Style="{StaticResource NavButtonActive}" Click="BtnNavMonitor_Click">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="📡" FontSize="16" Margin="0,0,12,0"/>
+                            <TextBlock Text="Monitor" VerticalAlignment="Center"/>
+                        </StackPanel>
+                    </Button>
+
+                    <Button x:Name="btnNavSettings" Style="{StaticResource NavButton}" Click="BtnNavSettings_Click">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="⚙️" FontSize="16" Margin="0,0,12,0"/>
+                            <TextBlock Text="Settings" VerticalAlignment="Center"/>
+                        </StackPanel>
+                    </Button>
+
+                    <Button x:Name="btnNavAbout" Style="{StaticResource NavButton}" Click="BtnNavAbout_Click">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="ℹ️" FontSize="16" Margin="0,0,12,0"/>
+                            <TextBlock Text="About" VerticalAlignment="Center"/>
+                        </StackPanel>
+                    </Button>
+                </StackPanel>
+
+                <!-- Bottom Status -->
+                <StackPanel VerticalAlignment="Bottom" Margin="20" Background="White"
+                           Height="80">
+                    <Border CornerRadius="4">
+                        <StackPanel>
+                            <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
+                                <Ellipse x:Name="ellipseNavStatus" Width="8" Height="8" Fill="#6BB6FF" 
+                                         VerticalAlignment="Center" Margin="0,0,8,0"/>
+                                <TextBlock x:Name="txtNavStatus" Text="Ready" FontSize="12" FontWeight="SemiBold"/>
+                            </StackPanel>
+                            <TextBlock x:Name="txtNavFiles" Text="0 files monitored" FontSize="11" Foreground="#605E5C"/>
+                        </StackPanel>
+                    </Border>
+                </StackPanel>
+            </StackPanel>
+        </Border>
+
+        <!-- Main Content Area -->
+        <Grid Grid.Column="1" Margin="20">
+            <!-- Toggle button that appears on small windows (moved to top-right) -->
+            <Button x:Name="btnToggleSidebar"  Visibility="Collapsed" Width="40" Height="36" HorizontalAlignment="Right" VerticalAlignment="Top" Click="BtnToggleSidebar_Click" ToolTip="Show menu" Margin="0,8,12,0" Panel.ZIndex="100" Background="Transparent" >
+                <TextBlock Text="☰" FontSize="18" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+            </Button>
+
+            <!-- Monitor Page (Default) -->
+            <Grid x:Name="MonitorPage" Visibility="Collapsed">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="*"/>
+                </Grid.RowDefinitions>
+
+                <!-- Page Header -->
+                <StackPanel Grid.Row="0" Margin="0,0,0,20" HorizontalAlignment="Center" MaxWidth="800">
+                    <TextBlock Text="FTP Monitor" Style="{StaticResource PageTitle}" TextAlignment="Center"/>
+                    <TextBlock Text="Monitor and download files from Linux FTP server to Windows" Style="{StaticResource PageSubtitle}" TextAlignment="Center"/>
+                </StackPanel>
+
+                <!-- Monitor Content -->
+                <Grid Grid.Row="1">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="450" MinWidth="400"/>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="*" MinWidth="400"/>
+                    </Grid.ColumnDefinitions>
+
+                    <!-- Left Panel: Connection + Settings -->
+                    <ScrollViewer Grid.Column="0" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                        <StackPanel>
+                            <!-- Connection Settings -->
+                            <Border Style="{StaticResource ModernCard}">
+                                <StackPanel>
+                                    <TextBlock Text="🌐 FTP Server Connection" Style="{StaticResource HeaderText}"/>
+
+                                    <Grid>
+                                        <Grid.RowDefinitions>
+                                            <RowDefinition Height="Auto"/>
+                                            <RowDefinition Height="Auto"/>
+                                            <RowDefinition Height="Auto"/>
+                                            <RowDefinition Height="Auto"/>
+                                            <RowDefinition Height="Auto"/>
+                                        </Grid.RowDefinitions>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="Auto" MinWidth="90"/>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="Auto" MinWidth="50"/>
+                                            <ColumnDefinition Width="100"/>
+                                        </Grid.ColumnDefinitions>
+
+                                        <!-- Server & Port -->
+                                        <TextBlock Grid.Row="0" Grid.Column="0" Text="Server:" Style="{StaticResource LabelText}" Margin="0,0,10,0"/>
+                                        <TextBox x:Name="txtHost" Grid.Row="0" Grid.Column="1" Style="{StaticResource ModernTextBox}" Margin="0,0,10,0"/>
+                                        <TextBlock Grid.Row="0" Grid.Column="2" Text="Port:" Style="{StaticResource LabelText}" Margin="0,0,10,0"/>
+                                        <TextBox x:Name="txtPort" Grid.Row="0" Grid.Column="3" Text="21" Style="{StaticResource ModernTextBox}"/>
+
+                                        <!-- Username -->
+                                        <TextBlock Grid.Row="1" Grid.Column="0" Text="Username:" Style="{StaticResource LabelText}" Margin="0,12,10,0"/>
+                                        <TextBox x:Name="txtUsername" Grid.Row="1" Grid.Column="1" Grid.ColumnSpan="3" Style="{StaticResource ModernTextBox}" Margin="0,12,0,0"/>
+
+                                        <!-- Password -->
+                                        <TextBlock Grid.Row="2" Grid.Column="0" Text="Password:" Style="{StaticResource LabelText}" Margin="0,12,10,0"/>
+                                        <PasswordBox x:Name="txtPassword" Grid.Row="2" Grid.Column="1" Grid.ColumnSpan="3" Style="{StaticResource ModernPasswordBox}" Margin="0,12,0,0"/>
+
+                                        <!-- Remote Folder -->
+                                        <TextBlock Grid.Row="3" Grid.Column="0" Text="Remote Path:" Style="{StaticResource LabelText}" Margin="0,12,10,0"/>
+                                        <TextBox x:Name="txtRemoteFolder" Grid.Row="3" Grid.Column="1" Grid.ColumnSpan="2" Text="/" Style="{StaticResource ModernTextBox}" Margin="0,12,10,0"/>
+                                        <Button x:Name="btnTestConnection" Grid.Row="3" Grid.Column="3" Click="BtnTestConnection_Click" Style="{StaticResource ModernButton}" Margin="0,12,0,0">
+                                            <StackPanel Orientation="Horizontal">
+                                                <TextBlock Text="🔗" Margin="0,0,6,0"/>
+                                                <TextBlock Text="Test"/>
+                                            </StackPanel>
+                                        </Button>
+                                    </Grid>
+                                </StackPanel>
+                            </Border>
+
+                            <!-- Download Settings -->
+                            <Border Style="{StaticResource ModernCard}">
+                                <StackPanel>
+                                    <TextBlock Text="📁 Download Settings" Style="{StaticResource HeaderText}"/>
+
+                                    <Grid>
+                                        <Grid.RowDefinitions>
+                                            <RowDefinition Height="Auto"/>
+                                            <RowDefinition Height="Auto"/>
+                                            <RowDefinition Height="Auto"/>
+                                        </Grid.RowDefinitions>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="Auto" MinWidth="90"/>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="Auto"/>
+                                        </Grid.ColumnDefinitions>
+
+                                        <!-- Local Folder -->
+                                        <TextBlock Grid.Row="0" Grid.Column="0" Text="Download to:" Style="{StaticResource LabelText}" Margin="0,0,10,0"/>
+                                        <TextBox x:Name="txtLocalFolder" Grid.Row="0" Grid.Column="1" Style="{StaticResource ModernTextBox}" Margin="0,0,10,0"/>
+                                        <Button x:Name="btnBrowse" Grid.Row="0" Grid.Column="2" Click="BtnBrowse_Click" Style="{StaticResource SecondaryButton}">
+                                            <StackPanel Orientation="Horizontal">
+                                                <TextBlock Text="📂" Margin="0,0,6,0"/>
+                                                <TextBlock Text="Browse"/>
+                                            </StackPanel>
+                                        </Button>
+
+                                        <!-- Check Interval -->
+                                        <TextBlock Grid.Row="1" Grid.Column="0" Text="Check every:" Style="{StaticResource LabelText}" Margin="0,12,10,0"/>
+                                        <StackPanel Grid.Row="1" Grid.Column="1" Grid.ColumnSpan="2" Orientation="Horizontal" Margin="0,12,0,0">
+                                            <TextBox x:Name="txtInterval" Width="80" Text="30" Style="{StaticResource ModernTextBox}"/>
+                                            <TextBlock Text="seconds" Style="{StaticResource LabelText}" Margin="10,0,0,0"/>
+                                        </StackPanel>
+
+                                        <!-- Delete After Download -->
+                                        <CheckBox x:Name="chkDeleteAfterDownload" Grid.Row="2" Grid.ColumnSpan="3" 
+                                                  Content="Delete files from server after successful download" 
+                                                  FontSize="14" Margin="0,16,0,0"/>
+                                    </Grid>
+                                </StackPanel>
+                            </Border>
+
+                            <!-- Control Buttons -->
+                            <Border Style="{StaticResource ModernCard}">
+                                <StackPanel>
+                                    <TextBlock Text="⚙️ Controls" Style="{StaticResource HeaderText}"/>
+
+                                    <WrapPanel Orientation="Horizontal">
+                                        <Button x:Name="btnStart" Click="BtnStart_Click" Style="{StaticResource ModernButton}">
+                                            <StackPanel Orientation="Horizontal">
+                                                <TextBlock Text="▶️" Margin="0,0,8,0"/>
+                                                <TextBlock Text="Start Monitoring"/>
+                                            </StackPanel>
+                                        </Button>
+
+                                        <Button x:Name="btnStop" Click="BtnStop_Click" IsEnabled="False" Style="{StaticResource DangerButton}">
+                                            <StackPanel Orientation="Horizontal">
+                                                <TextBlock Text="⏹️" Margin="0,0,8,0"/>
+                                                <TextBlock Text="Stop"/>
+                                            </StackPanel>
+                                        </Button>
+
+                                        <Button x:Name="btnCheckNow" Click="BtnCheckNow_Click" Style="{StaticResource SecondaryButton}">
+                                            <StackPanel Orientation="Horizontal">
+                                                <TextBlock Text="🔄" Margin="0,0,8,0"/>
+                                                <TextBlock Text="Check Now"/>
+                                            </StackPanel>
+                                        </Button>
+
+                                        <Button x:Name="btnClearLog" Click="BtnClearLog_Click" Style="{StaticResource SecondaryButton}">
+                                            <StackPanel Orientation="Horizontal">
+                                                <TextBlock Text="🗑️" Margin="0,0,8,0"/>
+                                                <TextBlock Text="Clear Log"/>
+                                            </StackPanel>
+                                        </Button>
+                                    </WrapPanel>
+
+                                    <!-- Status Information -->
+                                    <Grid Margin="0,16,0,0">
+                                        <Grid.RowDefinitions>
+                                            <RowDefinition Height="Auto"/>
+                                        </Grid.RowDefinitions>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="*"/>
+                                        </Grid.ColumnDefinitions>
+
+                                        <StackPanel Grid.Row="0" Grid.Column="0">
+                                            <TextBlock x:Name="lblStatus" Text="Ready to start monitoring" Style="{StaticResource StatusText}" FontWeight="SemiBold"/>
+                                        </StackPanel>
+
+                                        <StackPanel Grid.Row="0" Grid.Column="1" HorizontalAlignment="Right">
+                                            <TextBlock x:Name="lblDownloaded" Text="Downloaded: 0 files" Foreground="#107C10" FontWeight="SemiBold" FontSize="14"/>
+                                        </StackPanel>
+                                    </Grid>
+                                </StackPanel>
+                            </Border>
+                        </StackPanel>
+                    </ScrollViewer>
+
+                    <!-- Splitter -->
+                    <GridSplitter Grid.Column="1" Width="8" HorizontalAlignment="Center" VerticalAlignment="Stretch" 
+                                  Background="Transparent" ShowsPreview="True" Margin="8,0"/>
+
+                    <!-- Right Panel: Status & Activity Log -->
+                    <Grid Grid.Column="2">
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="*"/>
+                        </Grid.RowDefinitions>
+
+                        <!-- Status Overview -->
+                        <Border Grid.Row="0" Style="{StaticResource ModernCard}" MinHeight="140">
+                            <StackPanel>
+                                <TextBlock Text="📊 Status Overview" Style="{StaticResource HeaderText}"/>
+
+                                <Grid>
+                                    <Grid.RowDefinitions>
+                                        <RowDefinition Height="Auto"/>
+                                        <RowDefinition Height="Auto"/>
+                                        <RowDefinition Height="Auto"/>
+                                    </Grid.RowDefinitions>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto"/>
+                                        <ColumnDefinition Width="*"/>
+                                    </Grid.ColumnDefinitions>
+
+                                    <!-- Current Status -->
+                                    <StackPanel Grid.Row="0" Grid.Column="0" Grid.ColumnSpan="2" Orientation="Horizontal" Margin="0,0,0,8">
+                                        <Ellipse x:Name="ellipseStatus" Width="14" Height="14" Fill="#6BB6FF" VerticalAlignment="Center" Margin="0,0,12,0"/>
+                                        <TextBlock Text="Status:" FontWeight="SemiBold" Width="80" Style="{StaticResource LabelText}"/>
+                                        <TextBlock x:Name="txtStatusText" Text="Idle" Style="{StaticResource StatusText}" FontWeight="SemiBold"/>
+                                    </StackPanel>
+
+                                    <!-- Last Check -->
+                                    <TextBlock Grid.Row="1" Grid.Column="0" Text="Last check:" FontWeight="SemiBold" Width="80" Style="{StaticResource LabelText}" Margin="0,0,12,8"/>
+                                    <TextBlock Grid.Row="1" Grid.Column="1" x:Name="txtLastCheck" Text="-" Style="{StaticResource StatusText}" Margin="0,0,0,8"/>
+
+                                    <!-- Last Error -->
+                                    <TextBlock Grid.Row="2" Grid.Column="0" Text="Last error:" FontWeight="SemiBold" Width="80" Style="{StaticResource LabelText}" Margin="0,0,12,0" VerticalAlignment="Top"/>
+                                    <TextBlock Grid.Row="2" Grid.Column="1" x:Name="txtLastError" Text="-" Foreground="#D13438" TextWrapping="Wrap" Style="{StaticResource StatusText}"/>
+                                </Grid>
+                            </StackPanel>
+                        </Border>
+
+                        <!-- Activity Log -->
+                        <Border Grid.Row="1" Style="{StaticResource ModernCard}" Margin="0">
+                            <DockPanel>
+                                <TextBlock DockPanel.Dock="Top" Text="📝 Activity Log" Style="{StaticResource HeaderText}"/>
+                                <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto">
+                                    <TextBox x:Name="txtLog" FontFamily="Consolas" FontSize="12" 
+                                             Foreground="#323130" Background="#FAFAFA" 
+                                             IsReadOnly="True" TextWrapping="Wrap" 
+                                             AcceptsReturn="True" BorderThickness="1"
+                                             BorderBrush="#E1DFDD" Padding="12"
+                                             MinHeight="300"/>
+                                </ScrollViewer>
+                            </DockPanel>
+                        </Border>
+                    </Grid>
+                </Grid>
+            </Grid>
+
+            <!-- Settings Page -->
+            <Grid x:Name="SettingsPage" Visibility="Collapsed">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="*"/>
+                </Grid.RowDefinitions>
+
+                <!-- Page Header -->
+                <StackPanel Grid.Row="0" Margin="0,0,0,20">
+                    <TextBlock Text="Settings" Style="{StaticResource PageTitle}"/>
+                    <TextBlock Text="Configure application preferences and advanced options" Style="{StaticResource PageSubtitle}"/>
+                </StackPanel>
+
+                <!-- Settings Content -->
+                <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
+                    <StackPanel MaxWidth="600" HorizontalAlignment="Left">
+                        <!-- General Settings -->
+                        <Border Style="{StaticResource ModernCard}">
+                            <StackPanel>
+                                <TextBlock Text="🎛️ General Settings" Style="{StaticResource HeaderText}"/>
+                                <CheckBox Content="Start monitoring automatically when application launches" FontSize="14" Margin="0,0,0,12"/>
+                                <CheckBox Content="Minimize to system tray when closed" FontSize="14" Margin="0,0,0,12"/>
+                                <CheckBox Content="Show desktop notifications for downloads" FontSize="14" Margin="0,0,0,12"/>
+                                <CheckBox Content="Play sound when files are downloaded" FontSize="14"/>
+                            </StackPanel>
+                        </Border>
+
+                        <!-- Advanced Settings -->
+                        <Border Style="{StaticResource ModernCard}">
+                            <StackPanel>
+                                <TextBlock Text="⚡ Advanced Settings" Style="{StaticResource HeaderText}"/>
+
+                                <Grid>
+                                    <Grid.RowDefinitions>
+                                        <RowDefinition Height="Auto"/>
+                                        <RowDefinition Height="Auto"/>
+                                        <RowDefinition Height="Auto"/>
+                                        <RowDefinition Height="Auto"/>
+                                    </Grid.RowDefinitions>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="200"/>
+                                        <ColumnDefinition Width="*"/>
+                                    </Grid.ColumnDefinitions>
+
+                                    <TextBlock Grid.Row="0" Grid.Column="0" Text="Connection timeout:" Style="{StaticResource LabelText}" Margin="0,0,10,12"/>
+                                    <StackPanel Grid.Row="0" Grid.Column="1" Orientation="Horizontal" Margin="0,0,0,12">
+                                        <TextBox Width="80" Text="30" Style="{StaticResource ModernTextBox}"/>
+                                        <TextBlock Text="seconds" Style="{StaticResource LabelText}" Margin="10,0,0,0"/>
+                                    </StackPanel>
+
+                                    <TextBlock Grid.Row="1" Grid.Column="0" Text="Max retry attempts:" Style="{StaticResource LabelText}" Margin="0,0,10,12"/>
+                                    <TextBox Grid.Row="1" Grid.Column="1" Width="80" Text="3" Style="{StaticResource ModernTextBox}" HorizontalAlignment="Left" Margin="0,0,0,12"/>
+
+                                    <TextBlock Grid.Row="2" Grid.Column="0" Text="Log retention (days):" Style="{StaticResource LabelText}" Margin="0,0,10,12"/>
+                                    <TextBox Grid.Row="2" Grid.Column="1" Width="80" Text="30" Style="{StaticResource ModernTextBox}" HorizontalAlignment="Left" Margin="0,0,0,12"/>
+
+                                    <TextBlock Grid.Row="3" Grid.Column="0" Text="Passive FTP mode:" Style="{StaticResource LabelText}" Margin="0,0,10,0"/>
+                                    <CheckBox Grid.Row="3" Grid.Column="1" Content="Use passive mode (recommended)" FontSize="14"/>
+                                </Grid>
+                            </StackPanel>
+                        </Border>
+
+                        <!-- File Handling -->
+                        <Border Style="{StaticResource ModernCard}">
+                            <StackPanel>
+                                <TextBlock Text="📄 File Handling" Style="{StaticResource HeaderText}"/>
+
+                                <Grid>
+                                    <Grid.RowDefinitions>
+                                        <RowDefinition Height="Auto"/>
+                                        <RowDefinition Height="Auto"/>
+                                        <RowDefinition Height="Auto"/>
+                                    </Grid.RowDefinitions>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="200"/>
+                                        <ColumnDefinition Width="*"/>
+                                    </Grid.ColumnDefinitions>
+
+                                    <TextBlock Grid.Row="0" Grid.Column="0" Text="File filters:" Style="{StaticResource LabelText}" Margin="0,0,10,12"/>
+                                    <TextBox Grid.Row="0" Grid.Column="1" Text="*.txt;*.pdf;*.doc" Style="{StaticResource ModernTextBox}" Margin="0,0,0,12"/>
+
+                                    <TextBlock Grid.Row="1" Grid.Column="0" Text="Duplicate handling:" Style="{StaticResource LabelText}" Margin="0,0,10,12"/>
+                                    <ComboBox Grid.Row="1" Grid.Column="1" SelectedIndex="0" Margin="0,0,0,12">
+                                        <ComboBoxItem Content="Skip existing files"/>
+                                        <ComboBoxItem Content="Overwrite existing files"/>
+                                        <ComboBoxItem Content="Rename with timestamp"/>
+                                    </ComboBox>
+
+                                    <CheckBox Grid.Row="2" Grid.ColumnSpan="2" Content="Create subfolders based on date" FontSize="14"/>
+                                </Grid>
+                            </StackPanel>
+                        </Border>
+                    </StackPanel>
+                </ScrollViewer>
+            </Grid>
+
+            <!-- History Page -->
+            <Grid x:Name="HistoryPage" Visibility="Collapsed">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="*"/>
+                </Grid.RowDefinitions>
+
+                <!-- Page Header -->
+                <StackPanel Grid.Row="0" Margin="0,0,0,20">
+                    <TextBlock Text="Download History" Style="{StaticResource PageTitle}"/>
+                    <TextBlock Text="View all previously downloaded files and transfer statistics" Style="{StaticResource PageSubtitle}"/>
+                </StackPanel>
+
+                <!-- History Content -->
+                <Border Grid.Row="1" Style="{StaticResource ModernCard}" Margin="0">
+                    <DockPanel>
+                        <!-- Filter Bar -->
+                        <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="0,0,0,16">
+                            <TextBlock Text="Filter by date:" Style="{StaticResource LabelText}" Margin="0,0,10,0"/>
+                            <DatePicker Margin="0,0,10,0"/>
+                            <TextBlock Text="to" Style="{StaticResource LabelText}" Margin="0,0,10,0"/>
+                            <DatePicker Margin="0,0,20,0"/>
+                            <Button Content="🔍 Search" Style="{StaticResource SecondaryButton}"/>
+                            <Button Content="🗑️ Clear History" Style="{StaticResource DangerButton}" Margin="10,0,0,0"/>
+                        </StackPanel>
+
+                        <!-- History List -->
+                        <DataGrid AutoGenerateColumns="False" CanUserAddRows="False" HeadersVisibility="Column"
+                                  GridLinesVisibility="Horizontal" RowHeaderWidth="0">
+                            <DataGrid.Columns>
+                                <DataGridTextColumn Header="Date/Time" Width="140" Binding="{Binding DateTime}"/>
+                                <DataGridTextColumn Header="File Name" Width="*" Binding="{Binding FileName}"/>
+                                <DataGridTextColumn Header="Size" Width="80" Binding="{Binding FileSize}"/>
+                                <DataGridTextColumn Header="Status" Width="100" Binding="{Binding Status}"/>
+                                <DataGridTextColumn Header="Source Path" Width="200" Binding="{Binding SourcePath}"/>
+                            </DataGrid.Columns>
+                        </DataGrid>
+                    </DockPanel>
+                </Border>
+            </Grid>
+
+            <!-- Other pages would go here following the same pattern -->
+            <Grid x:Name="SchedulePage" Visibility="Collapsed">
+                <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
+                    <TextBlock Text="⏰" FontSize="48" HorizontalAlignment="Center" Margin="0,0,0,16"/>
+                    <TextBlock Text="Schedule Page" Style="{StaticResource PageTitle}" HorizontalAlignment="Center"/>
+                    <TextBlock Text="Schedule monitoring times and automated tasks" Style="{StaticResource PageSubtitle}" HorizontalAlignment="Center"/>
+                </StackPanel>
+            </Grid>
+
+            <Grid x:Name="LogsPage" Visibility="Collapsed">
+                <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
+                    <TextBlock Text="📋" FontSize="48" HorizontalAlignment="Center" Margin="0,0,0,16"/>
+                    <TextBlock Text="Logs Page" Style="{StaticResource PageTitle}" HorizontalAlignment="Center"/>
+                    <TextBlock Text="View detailed application logs and error reports" Style="{StaticResource PageSubtitle}" HorizontalAlignment="Center"/>
+                </StackPanel>
+            </Grid>
+
+            <Grid x:Name="AboutPage" Visibility="Collapsed">
+                <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" MaxWidth="500">
+                    <TextBlock Text="ℹ️" FontSize="48" HorizontalAlignment="Center" Margin="0,0,0,16"/>
+                    <TextBlock Text="About FTP Monitor" Style="{StaticResource PageTitle}" HorizontalAlignment="Center"/>
+                    <TextBlock Text="Version 1.0.0" FontSize="16" HorizontalAlignment="Center" Margin="0,0,0,20"/>
+                    <TextBlock Text="A powerful file monitoring and transfer application that helps you automatically download files from Linux FTP servers to your Windows machine." 
+                               Style="{StaticResource PageSubtitle}" HorizontalAlignment="Center" TextWrapping="Wrap"/>
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,20,0,0">
+                        <Button Content="📧 Support" Style="{StaticResource SecondaryButton}" Margin="0,0,10,0"/>
+                        <Button Content="🌐 Website" Style="{StaticResource SecondaryButton}"/>
+                    </StackPanel>
+                </StackPanel>
+            </Grid>
+
+            <!-- Floating in-window sidebar was moved into the main content Grid to ensure it slides over content area -->
+            <Border x:Name="FloatingSidebar" Background="#FAFAFA" BorderBrush="#E1DFDD" BorderThickness="2"
+                    Width="260" VerticalAlignment="Stretch" HorizontalAlignment="Left" Visibility="Collapsed"
+                    RenderTransformOrigin="0.5,0.5" Panel.ZIndex="10" ClipToBounds="True"
+                    CornerRadius="16">
+                <Border.RenderTransform>
+                    <TranslateTransform X="-260" />
+                </Border.RenderTransform>
+                <StackPanel>
+                    <Border Background="#0078D4" Padding="20" CornerRadius="16,16,0,0">
+                        <StackPanel>
+                            <TextBlock Text="FTP Monitor" FontSize="18" FontWeight="Bold" Foreground="White"/>
+                            <TextBlock Text="File Transfer Tool" FontSize="12" Foreground="#E1F5FE"/>
+                        </StackPanel>
+                    </Border>
+
+                    <StackPanel Margin="0,20,0,0">
+                        <Button Style="{StaticResource NavButtonActive}" Click="BtnNavMonitor_Click">
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="📡" FontSize="16" Margin="0,0,12,0"/>
+                                <TextBlock Text="Monitor" VerticalAlignment="Center"/>
+                            </StackPanel>
+                        </Button>
+
+                        <Button Style="{StaticResource NavButton}" Click="BtnNavSettings_Click">
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="⚙️" FontSize="16" Margin="0,0,12,0"/>
+                                <TextBlock Text="Settings" VerticalAlignment="Center"/>
+                            </StackPanel>
+                        </Button>
+
+                        <Button Style="{StaticResource NavButton}" Click="BtnNavAbout_Click">
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="ℹ️" FontSize="16" Margin="0,0,12,0"/>
+                                <TextBlock Text="About" VerticalAlignment="Center"/>
+                            </StackPanel>
+                        </Button>
+                    </StackPanel>
+                </StackPanel>
+            </Border>
+        </Grid>
+    </Grid>
+</Window>
