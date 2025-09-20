@@ -24,12 +24,28 @@ namespace FTP_Tool.Models
         public int MaxLogLines { get; set; } = 1000;
 
         // Start application with Windows (auto-start)
-        public bool StartWithWindows { get; set; } = false;
+        public bool StartWithWindows { get; set; } = true;
+
+        // When started by OS (via startup), start minimized to tray instead of showing window
+        public bool StartMinimizedOnStartup { get; set; } = true;
 
         // Minimize to system tray when the window is closed
         public bool MinimizeToTray { get; set; } = true;
 
         // Automatically start monitoring when app launches
         public bool StartMonitoringOnLaunch { get; set; } = false;
+
+        // --- Network & Performance settings ---
+        // Connection timeout for FTP operations (seconds)
+        public int ConnectionTimeoutSeconds { get; set; } = 30;
+
+        // Number of retry attempts for FTP operations
+        public int MaxRetryAttempts { get; set; } = 3;
+
+        // Use passive FTP mode when true
+        public bool UsePassiveMode { get; set; } = true;
+
+        // How many days to keep log files (retained files count will be approx equal to days)
+        public int LogRetentionDays { get; set; } = 30;
     }
 }

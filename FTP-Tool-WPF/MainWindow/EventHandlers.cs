@@ -5,6 +5,7 @@ using System.Net;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Media.Animation;
 
 namespace FTP_Tool
 {
@@ -18,6 +19,7 @@ namespace FTP_Tool
         private void UpdateDownloadedLabel()
         {
             Dispatcher.Invoke(() => lblDownloaded.Text = $"Downloaded: {_downloadedCount} files");
+            try { UpdateTray(); } catch { }
         }
 
         private void BtnStart_Click(object sender, RoutedEventArgs e)
@@ -52,11 +54,14 @@ namespace FTP_Tool
 
             SetStatus("Monitoring started");
             Log("Monitor started", LogLevel.Info);
+
+            try { UpdateTray(); } catch { }
         }
 
         private void BtnStop_Click(object sender, RoutedEventArgs e)
         {
             StopMonitoring("Monitoring stopped by user");
+            try { UpdateTray(); } catch { }
         }
 
         private async void BtnCheckNow_Click(object sender, RoutedEventArgs e)
@@ -77,6 +82,7 @@ namespace FTP_Tool
             {
                 btnCheckNow.IsEnabled = true;
                 SetStatus("Ready");
+                try { UpdateTray(); } catch { }
             }
         }
 
@@ -113,6 +119,7 @@ namespace FTP_Tool
                 await RefreshRemoteFileCount();
             }
             UpdateSidebarStats();
+            try { UpdateTray(); } catch { }
         }
 
         private void BtnClearLog_Click(object sender, RoutedEventArgs e)
@@ -122,6 +129,7 @@ namespace FTP_Tool
                 _displayedLogEntries.Clear();
                 _downloadedCount = 0;
                 UpdateDownloadedLabel();
+                try { UpdateTray(); } catch { }
             }
             catch { }
         }
@@ -149,18 +157,21 @@ namespace FTP_Tool
         private void BtnNavMonitor_Click(object sender, RoutedEventArgs e)
         {
             ShowPage("Monitor");
+            SetFloatingSidebarActive("Monitor");
             if (FloatingSidebar.Visibility == Visibility.Visible) HideFloatingSidebar();
         }
 
         private void BtnNavSettings_Click(object sender, RoutedEventArgs e)
         {
             ShowPage("Settings");
+            SetFloatingSidebarActive("Settings");
             if (FloatingSidebar.Visibility == Visibility.Visible) HideFloatingSidebar();
         }
 
         private void BtnNavAbout_Click(object sender, RoutedEventArgs e)
         {
             ShowPage("About");
+            SetFloatingSidebarActive("About");
             if (FloatingSidebar.Visibility == Visibility.Visible) HideFloatingSidebar();
         }
 
@@ -172,14 +183,91 @@ namespace FTP_Tool
         // Simple show/hide for floating sidebar
         private void HideFloatingSidebar()
         {
-            try { FloatingSidebar.Visibility = Visibility.Collapsed; } catch { }
+            try
+            {
+                // animate off-screen using TranslateTransform
+                double width = (FloatingSidebar.ActualWidth > 0) ? FloatingSidebar.ActualWidth : 260;
+                var tt = FloatingSidebar.RenderTransform as System.Windows.Media.TranslateTransform;
+                if (tt == null)
+                {
+                    tt = new System.Windows.Media.TranslateTransform(0, 0);
+                    FloatingSidebar.RenderTransform = tt;
+                }
+
+                var anim = new DoubleAnimation
+                {
+                    To = -width,
+                    Duration = TimeSpan.FromMilliseconds(220),
+                    EasingFunction = new QuadraticEase { EasingMode = EasingMode.EaseInOut }
+                };
+                anim.Completed += (s, e) => FloatingSidebar.Visibility = Visibility.Collapsed;
+                tt.BeginAnimation(System.Windows.Media.TranslateTransform.XProperty, anim);
+            }
+            catch { }
         }
 
         private void ShowFloatingSidebar()
         {
-            try { FloatingSidebar.Visibility = Visibility.Visible; } catch { }
+            try
+            {
+                // ensure visible then animate into view
+                FloatingSidebar.Visibility = Visibility.Visible;
+
+                // give layout a chance to measure so ActualWidth is valid
+                FloatingSidebar.UpdateLayout();
+
+                var tt = FloatingSidebar.RenderTransform as System.Windows.Media.TranslateTransform;
+                if (tt == null)
+                {
+                    tt = new System.Windows.Media.TranslateTransform(-FloatingSidebar.ActualWidth, 0);
+                    FloatingSidebar.RenderTransform = tt;
+                }
+
+                var anim = new DoubleAnimation
+                {
+                    To = 0,
+                    Duration = TimeSpan.FromMilliseconds(220),
+                    EasingFunction = new QuadraticEase { EasingMode = EasingMode.EaseInOut }
+                };
+                tt.BeginAnimation(System.Windows.Media.TranslateTransform.XProperty, anim);
+            }
+            catch { }
         }
 
+        // update floating sidebar button styles so the active page is visually selected
+        private void SetFloatingSidebarActive(string page)
+        {
+            try
+            {
+                var btnM = FindName("btnFloatingNavMonitor") as System.Windows.Controls.Button;
+                var btnS = FindName("btnFloatingNavSettings") as System.Windows.Controls.Button;
+                var btnA = FindName("btnFloatingNavAbout") as System.Windows.Controls.Button;
+
+                if (btnM != null && btnS != null && btnA != null)
+                {
+                    // reset all to NavButton
+                    btnM.Style = (Style)FindResource("NavButton");
+                    btnS.Style = (Style)FindResource("NavButton");
+                    btnA.Style = (Style)FindResource("NavButton");
+
+                    switch (page)
+                    {
+                        case "Monitor":
+                            btnM.Style = (Style)FindResource("NavButtonActive");
+                            break;
+                        case "Settings":
+                            btnS.Style = (Style)FindResource("NavButtonActive");
+                            break;
+                        case "About":
+                            btnA.Style = (Style)FindResource("NavButtonActive");
+                            break;
+                    }
+                }
+            }
+            catch { }
+        }
+
+        // update saved credentials list
         private void BtnRefreshCredentials_Click(object sender, RoutedEventArgs e)
         {
             try

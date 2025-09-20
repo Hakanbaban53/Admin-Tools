@@ -55,6 +55,9 @@ namespace FTP_Tool
         // Tray icon
         private NotifyIcon? _trayIcon;
 
+        // suppress hide-to-tray when performing real exit from tray
+        private bool _suppressHideOnClose = false;
+
         // expose collection for XAML binding
         public ObservableCollection<LogEntry> _displayedLogEntriesPublic => _displayedLogEntries;
 
@@ -85,6 +88,13 @@ namespace FTP_Tool
 
             // initialize tray and other platform-specific bits
             try { InitializeTray(); } catch { }
+
+            // Try to instantiate logging service eagerly (will be re-applied on load with settings)
+            try
+            {
+                _logging_service = new LoggingService(_logFilePath, _settings);
+            }
+            catch { }
         }
     }
 }

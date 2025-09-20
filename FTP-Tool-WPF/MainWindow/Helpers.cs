@@ -90,18 +90,13 @@ namespace FTP_Tool
                 switch (page)
                 {
                     case "Settings": toShow = SettingsPage; break;
-                    case "History": toShow = HistoryPage; break;
-                    case "Schedule": toShow = SchedulePage; break;
-                    case "Logs": toShow = LogsPage; break;
                     case "About": toShow = AboutPage; break;
                     default: toShow = MonitorPage; break;
                 }
 
+                // hide the three main pages then show the requested one
                 MonitorPage.Visibility = Visibility.Collapsed;
                 SettingsPage.Visibility = Visibility.Collapsed;
-                HistoryPage.Visibility = Visibility.Collapsed;
-                SchedulePage.Visibility = Visibility.Collapsed;
-                LogsPage.Visibility = Visibility.Collapsed;
                 AboutPage.Visibility = Visibility.Collapsed;
 
                 if (animate)

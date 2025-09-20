@@ -26,6 +26,7 @@ namespace FTP_Tool.Services
             {
                 _enabled = settings?.LogToFile ?? true;
                 var minLevel = MapLevel(settings?.MinimumLogLevel);
+                var retention = Math.Max(1, settings?.LogRetentionDays ?? 30);
 
                 // dispose existing logger if any
                 try { (_logger as IDisposable)?.Dispose(); } catch { }
@@ -40,7 +41,7 @@ namespace FTP_Tool.Services
                         cfg = cfg.WriteTo.Async(a => a.File(
                             path: filePath,
                             rollingInterval: RollingInterval.Day,
-                            retainedFileCountLimit: 30,
+                            retainedFileCountLimit: retention,
                             outputTemplate: "[{Timestamp:yyyy-MM-dd HH:mm:ss}] [{Level}] {Message}{NewLine}"));
                     }
                     catch
@@ -48,7 +49,7 @@ namespace FTP_Tool.Services
                         cfg = cfg.WriteTo.File(
                             path: filePath,
                             rollingInterval: RollingInterval.Day,
-                            retainedFileCountLimit: 30,
+                            retainedFileCountLimit: retention,
                             outputTemplate: "[{Timestamp:yyyy-MM-dd HH:mm:ss}] [{Level}] {Message}{NewLine}");
                     }
 

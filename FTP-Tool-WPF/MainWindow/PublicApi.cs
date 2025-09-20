@@ -27,10 +27,8 @@ namespace FTP_Tool
         {
             try
             {
-                if (WindowState == WindowState.Minimized && _settings.MinimizeToTray)
-                {
-                    HideToTray();
-                }
+                // Do not hide to tray on minimize. Closing behavior (hide to tray when closing) is handled in Window_Closing.
+                // This prevents accidental minimize from sending the app to the tray.
             }
             catch { }
         }
