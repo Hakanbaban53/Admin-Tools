@@ -5,6 +5,7 @@ using System.Windows.Controls;
 using FTP_Tool.Services;
 using Microsoft.Win32;
 using System.Reflection;
+using System.Linq;
 
 namespace FTP_Tool
 {
@@ -12,288 +13,339 @@ namespace FTP_Tool
     {
         private async void MainWindow_Loaded(object? sender, RoutedEventArgs e)
         {
-            _settings = await _settings_service.LoadAsync();
+            // Load settings first
+            try
+            {
+                _settings = await _settings_service.LoadAsync();
+            }
+            catch
+            {
+                _settings = new Models.AppSettings();
+            }
 
+            // Initialize logging service (best-effort)
             try
             {
                 _logging_service = new LoggingService(_logFilePath, _settings);
             }
             catch { }
 
-            // Apply FTP options
+            // Apply FTP options and forward ftp logging
             try
             {
                 _ftpService.ApplyOptions(_settings.ConnectionTimeoutSeconds, _settings.MaxRetryAttempts, _settings.UsePassiveMode);
-                // forward telemetry from FtpService into the app logging pipeline
                 try { _ftpService.Logger = (msg, lvl) => Log(msg, lvl); } catch { }
             }
             catch { }
 
-            // populate UI (existing controls assumed to exist in XAML)
+            // Populate common UI fields from settings
             try
             {
-                txtHost.Text = _settings.Host;
-                txtPort.Text = _settings.Port.ToString();
-                txtUsername.Text = _settings.Username;
-                txtRemoteFolder.Text = string.IsNullOrWhiteSpace(_settings.RemoteFolder) ? "/" : _settings.RemoteFolder;
-                txtLocalFolder.Text = _settings.LocalFolder;
-                txtInterval.Text = _settings.IntervalSeconds.ToString();
+                txtHost.Text = _settings.Host ?? string.Empty;
+                txtPort.Text = (_settings.Port > 0) ? _settings.Port.ToString() : "21";
+                txtUsername.Text = _settings.Username ?? string.Empty;
+                txtRemoteFolder.Text = string.IsNullOrWhiteSpace(_settings.RemoteFolder) ? "/" : _settings.RemoteFolder!;
+                txtLocalFolder.Text = _settings.LocalFolder ?? string.Empty;
+                txtInterval.Text = (_settings.IntervalSeconds > 0) ? _settings.IntervalSeconds.ToString() : "30";
                 chkDeleteAfterDownload.IsChecked = _settings.DeleteAfterDownload;
 
                 chkLogToFile.IsChecked = _settings.LogToFile;
-                try
-                {
-                    var cb = this.FindName("chkAutoStart") as System.Windows.Controls.CheckBox;
-                    if (cb != null) cb.IsChecked = _settings.StartWithWindows;
-                }
-                catch { }
+                try { chkAutoStart.IsChecked = _settings.StartWithWindows; } catch { }
 
                 try
                 {
-                    var cmb = this.FindName("cmbStartupMode") as System.Windows.Controls.ComboBox;
-                    if (cmb != null)
-                    {
-                        // 0 = Open window, 1 = Start minimized to tray
-                        cmb.SelectedIndex = _settings.StartMinimizedOnStartup ? 1 : 0;
-                    }
+                    cmbStartupMode.SelectedIndex = _settings.StartMinimizedOnStartup ? 1 : 0;
                 }
                 catch { }
 
                 chkMinimizeToTray.IsChecked = _settings.MinimizeToTray;
-                // new checkbox for start monitoring on launch
                 try { chkStartMonitoringOnLaunch.IsChecked = _settings.StartMonitoringOnLaunch; } catch { }
 
-                // advanced settings mapping
-                try
-                {
-                    txtConnectionTimeout.Text = _settings.ConnectionTimeoutSeconds.ToString();
-                    txtMaxRetries.Text = _settings.MaxRetryAttempts.ToString();
-                    chkUsePassiveMode.IsChecked = _settings.UsePassiveMode;
-                    txtLogRetentionDays.Text = _settings.LogRetentionDays.ToString();
-                }
-                catch { }
+                // advanced
+                txtConnectionTimeout.Text = _settings.ConnectionTimeoutSeconds.ToString();
+                txtMaxRetries.Text = _settings.MaxRetryAttempts.ToString();
+                chkUsePassiveMode.IsChecked = _settings.UsePassiveMode;
+                txtLogRetentionDays.Text = _settings.LogRetentionDays.ToString();
 
-                // logging controls - ensure UI shows saved values
-                try
+                // logging
+                if (!string.IsNullOrWhiteSpace(_settings.MinimumLogLevel))
                 {
-                    if (!string.IsNullOrWhiteSpace(_settings.MinimumLogLevel))
+                    foreach (var item in cmbMinimumLogLevel.Items)
                     {
-                        foreach (var item in cmbMinimumLogLevel.Items)
+                        if (item is ComboBoxItem cbi && string.Equals(cbi.Content?.ToString(), _settings.MinimumLogLevel, StringComparison.OrdinalIgnoreCase))
                         {
-                            if (item is ComboBoxItem cbi && string.Equals(cbi.Content?.ToString(), _settings.MinimumLogLevel, StringComparison.OrdinalIgnoreCase))
-                            {
-                                cmbMinimumLogLevel.SelectedItem = item;
-                                break;
-                            }
+                            cmbMinimumLogLevel.SelectedItem = item;
+                            break;
                         }
                     }
-
-                    txtMaxLogLines.Text = _settings.MaxLogLines.ToString();
                 }
-                catch { }
 
-                // load saved password from Windows Credential Manager (if present)
-                try
-                {
-                    var cred = _credentialService.Load(_settings.Host ?? string.Empty, _settings.Username ?? string.Empty);
-                    if (cred.HasValue && !string.IsNullOrEmpty(cred.Value.Password))
-                    {
-                        txtPassword.Password = cred.Value.Password;
-                    }
-                }
-                catch { /* ignore credential errors */ }
+                txtMaxLogLines.Text = _settings.MaxLogLines.ToString();
             }
             catch { }
 
-            // wire simple handlers for settings controls
+            // Load saved FTP password from credential store (best-effort)
             try
             {
-                var autoCb = this.FindName("chkAutoStart") as System.Windows.Controls.CheckBox;
-                var cmbStartup = this.FindName("cmbStartupMode") as System.Windows.Controls.ComboBox;
-
-                // initialize startup mode enabled state based on AutoStart
-                try
-                {
-                    if (autoCb != null && cmbStartup != null)
-                    {
-                        cmbStartup.IsEnabled = autoCb.IsChecked == true;
-                    }
-                }
-                catch { }
-
-                if (autoCb != null)
-                {
-                    autoCb.Checked += (s, ev) =>
-                    {
-                        try
-                        {
-                            _settings.StartWithWindows = true;
-                            var _ = _settings_service.SaveAsync(_settings);
-                            EnableAutoStart();
-                            // enable startup mode selection when autostart enabled
-                            try { if (cmbStartup != null) cmbStartup.IsEnabled = true; } catch { }
-                        }
-                        catch { }
-                    };
-
-                    autoCb.Unchecked += (s, ev) =>
-                    {
-                        try
-                        {
-                            _settings.StartWithWindows = false;
-                            var _ = _settings_service.SaveAsync(_settings);
-                            DisableAutoStart();
-                            // disable startup mode selection when autostart disabled
-                            try { if (cmbStartup != null) cmbStartup.IsEnabled = false; } catch { }
-                        }
-                        catch { }
-                    };
-                }
-
-                if (cmbStartup != null)
-                {
-                    cmbStartup.SelectionChanged += (s, ev) =>
-                    {
-                        try
-                        {
-                            // SelectedIndex: 0 = Open window, 1 = Start minimized
-                            _settings.StartMinimizedOnStartup = (cmbStartup.SelectedIndex == 1);
-                            var _ = _settings_service.SaveAsync(_settings);
-                            // refresh Run entry when autostart enabled
-                            try { if (autoCb != null && autoCb.IsChecked == true) EnableAutoStart(); } catch { }
-                        }
-                        catch { }
-                    };
-                }
-
-                chkMinimizeToTray.Checked += (s, ev) => { _settings.MinimizeToTray = true; var _ = _settings_service.SaveAsync(_settings); };
-                chkMinimizeToTray.Unchecked += (s, ev) => { _settings.MinimizeToTray = false; var _ = _settings_service.SaveAsync(_settings); };
-
-                // persist change for StartMonitoringOnLaunch
-                try
-                {
-                    chkStartMonitoringOnLaunch.Checked += (s, ev) => { _settings.StartMonitoringOnLaunch = true; var _ = _settings_service.SaveAsync(_settings); };
-                    chkStartMonitoringOnLaunch.Unchecked += (s, ev) => { _settings.StartMonitoringOnLaunch = false; var _ = _settings_service.SaveAsync(_settings); };
-                }
-                catch { }
-
-                // advanced settings handlers
-                try
-                {
-                    txtConnectionTimeout.LostFocus += (s, ev) =>
-                    {
-                        if (int.TryParse(txtConnectionTimeout.Text, out var val))
-                        {
-                            _settings.ConnectionTimeoutSeconds = Math.Max(1, val);
-                            _ftpService.ApplyOptions(_settings.ConnectionTimeoutSeconds, _settings.MaxRetryAttempts, _settings.UsePassiveMode);
-                            var _ = _settings_service.SaveAsync(_settings);
-                        }
-                        else
-                        {
-                            txtConnectionTimeout.Text = _settings.ConnectionTimeoutSeconds.ToString();
-                        }
-                    };
-
-                    txtMaxRetries.LostFocus += (s, ev) =>
-                    {
-                        if (int.TryParse(txtMaxRetries.Text, out var val))
-                        {
-                            _settings.MaxRetryAttempts = Math.Max(0, val);
-                            _ftpService.ApplyOptions(_settings.ConnectionTimeoutSeconds, _settings.MaxRetryAttempts, _settings.UsePassiveMode);
-                            var _ = _settings_service.SaveAsync(_settings);
-                        }
-                        else
-                        {
-                            txtMaxRetries.Text = _settings.MaxRetryAttempts.ToString();
-                        }
-                    };
-
-                    chkUsePassiveMode.Checked += (s, ev) => { _settings.UsePassiveMode = true; _ftpService.ApplyOptions(_settings.ConnectionTimeoutSeconds, _settings.MaxRetryAttempts, _settings.UsePassiveMode); var _ = _settings_service.SaveAsync(_settings); };
-                    chkUsePassiveMode.Unchecked += (s, ev) => { _settings.UsePassiveMode = false; _ftpService.ApplyOptions(_settings.ConnectionTimeoutSeconds, _settings.MaxRetryAttempts, _settings.UsePassiveMode); var _ = _settings_service.SaveAsync(_settings); };
-
-                    txtLogRetentionDays.LostFocus += (s, ev) =>
-                    {
-                        if (int.TryParse(txtLogRetentionDays.Text, out var val))
-                        {
-                            _settings.LogRetentionDays = Math.Max(1, val);
-                            _logging_service?.ApplySettings(_logFilePath, _settings);
-                            var _ = _settings_service.SaveAsync(_settings);
-                        }
-                        else
-                        {
-                            txtLogRetentionDays.Text = _settings.LogRetentionDays.ToString();
-                        }
-                    };
-                }
-                catch { }
-
-                // logging handlers
-                try
-                {
-                    chkLogToFile.Checked += (s, ev) => { _settings.LogToFile = true; _logging_service?.ApplySettings(_logFilePath, _settings); var _ = _settings_service.SaveAsync(_settings); };
-                    chkLogToFile.Unchecked += (s, ev) => { _settings.LogToFile = false; _logging_service?.ApplySettings(_logFilePath, _settings); var _ = _settings_service.SaveAsync(_settings); };
-
-                    cmbMinimumLogLevel.SelectionChanged += (s, ev) =>
-                    {
-                        try
-                        {
-                            var selected = cmbMinimumLogLevel.SelectedItem as ComboBoxItem;
-                            if (selected != null)
-                            {
-                                _settings.MinimumLogLevel = selected.Content?.ToString() ?? "Info";
-                                _logging_service?.ApplySettings(_logFilePath, _settings);
-                                var _ = _settings_service.SaveAsync(_settings);
-                            }
-                        }
-                        catch { }
-                    };
-
-                    txtMaxLogLines.LostFocus += (s, ev) =>
-                    {
-                        if (int.TryParse(txtMaxLogLines.Text, out var maxLines))
-                        {
-                            _settings.MaxLogLines = Math.Max(0, maxLines);
-                            var _ = _settings_service.SaveAsync(_settings);
-                        }
-                        else
-                        {
-                            txtMaxLogLines.Text = _settings.MaxLogLines.ToString();
-                        }
-                    };
-                }
-                catch { }
-
+                var cred = _credentialService.Load(_settings.Host ?? string.Empty, _settings.Username ?? string.Empty);
+                if (cred.HasValue && !string.IsNullOrEmpty(cred.Value.Password)) txtPassword.Password = cred.Value.Password;
             }
             catch { }
 
-            // Populate saved credentials list in settings UI (if control exists)
+            // Load email related settings
+            try
+            {
+                txtSmtpHost.Text = _settings.SmtpHost ?? string.Empty;
+                txtSmtpPort.Text = _settings.SmtpPort.ToString();
+                chkSmtpSsl.IsChecked = _settings.SmtpEnableSsl;
+                txtSmtpUser.Text = _settings.SmtpUsername ?? string.Empty;
+
+                try
+                {
+                    var smtpCred = _credentialService.Load(_settings.SmtpHost ?? string.Empty, _settings.SmtpUsername ?? string.Empty);
+                    if (smtpCred.HasValue) txtSmtpPass.Password = smtpCred.Value.Password ?? string.Empty;
+                }
+                catch { }
+
+                txtEmailFrom.Text = _settings.EmailFrom ?? string.Empty;
+
+                LoadRecipientsFromSettings();
+
+                // Weekday selections
+                try
+                {
+                    var days = (_settings.AlertWeekdays ?? string.Empty).Split(new[] { ',', ';' }, StringSplitOptions.RemoveEmptyEntries).Select(s => s.Trim());
+                    chkMon.IsChecked = days.Contains("Mon");
+                    chkTue.IsChecked = days.Contains("Tue");
+                    chkWed.IsChecked = days.Contains("Wed");
+                    chkThu.IsChecked = days.Contains("Thu");
+                    chkFri.IsChecked = days.Contains("Fri");
+                    chkSat.IsChecked = days.Contains("Sat");
+                    chkSun.IsChecked = days.Contains("Sun");
+                }
+                catch { }
+
+                txtWorkStart.Text = _settings.WorkStart ?? "08:00";
+                txtWorkEnd.Text = _settings.WorkEnd ?? "17:00";
+                txtLunchStart.Text = _settings.LunchStart ?? "12:00";
+                txtLunchEnd.Text = _settings.LunchEnd ?? "13:00";
+                txtAlertThreshold.Text = (_settings.AlertThresholdMinutes > 0 ? _settings.AlertThresholdMinutes : 15).ToString();
+
+                // Alert master switches
+                try
+                {
+                    chkAlertsEnabled.IsChecked = _settings.AlertsEnabled;
+                    chkAlertAlways.IsChecked = _settings.AlertAlways;
+
+                    var alertsEnabled = chkAlertsEnabled.IsChecked == true;
+                    var alertAlways = chkAlertAlways.IsChecked == true;
+
+                    chkMon.IsEnabled = alertsEnabled && !alertAlways;
+                    chkTue.IsEnabled = alertsEnabled && !alertAlways;
+                    chkWed.IsEnabled = alertsEnabled && !alertAlways;
+                    chkThu.IsEnabled = alertsEnabled && !alertAlways;
+                    chkFri.IsEnabled = alertsEnabled && !alertAlways;
+                    chkSat.IsEnabled = alertsEnabled && !alertAlways;
+                    chkSun.IsEnabled = alertsEnabled && !alertAlways;
+                    txtWorkStart.IsEnabled = alertsEnabled && !alertAlways;
+                    txtWorkEnd.IsEnabled = alertsEnabled && !alertAlways;
+                    txtLunchStart.IsEnabled = alertsEnabled && !alertAlways;
+                    txtLunchEnd.IsEnabled = alertsEnabled && !alertAlways;
+                    txtAlertThreshold.IsEnabled = alertsEnabled;
+                }
+                catch { }
+            }
+            catch { }
+
+            // Wire handlers (only once during load)
+            try
+            {
+                // Auto start handlers
+                if (chkAutoStart != null)
+                {
+                    chkAutoStart.Checked += (s, ev) =>
+                    {
+                        _settings.StartWithWindows = true;
+                        _ = _settings_service.SaveAsync(_settings);
+                        EnableAutoStart();
+                        try { cmbStartupMode.IsEnabled = true; } catch { }
+                    };
+
+                    chkAutoStart.Unchecked += (s, ev) =>
+                    {
+                        _settings.StartWithWindows = false;
+                        _ = _settings_service.SaveAsync(_settings);
+                        DisableAutoStart();
+                        try { cmbStartupMode.IsEnabled = false; } catch { }
+                    };
+                }
+
+                cmbStartupMode.SelectionChanged += (s, ev) =>
+                {
+                    _settings.StartMinimizedOnStartup = cmbStartupMode.SelectedIndex == 1;
+                    _ = _settings_service.SaveAsync(_settings);
+                    try { if (chkAutoStart.IsChecked == true) EnableAutoStart(); } catch { }
+                };
+
+                chkMinimizeToTray.Checked += (s, ev) => { _settings.MinimizeToTray = true; _ = _settings_service.SaveAsync(_settings); };
+                chkMinimizeToTray.Unchecked += (s, ev) => { _settings.MinimizeToTray = false; _ = _settings_service.SaveAsync(_settings); };
+
+                try
+                {
+                    chkStartMonitoringOnLaunch.Checked += (s, ev) => { _settings.StartMonitoringOnLaunch = true; _ = _settings_service.SaveAsync(_settings); };
+                    chkStartMonitoringOnLaunch.Unchecked += (s, ev) => { _settings.StartMonitoringOnLaunch = false; _ = _settings_service.SaveAsync(_settings); };
+                }
+                catch { }
+
+                // Advanced options
+                txtConnectionTimeout.LostFocus += (s, ev) =>
+                {
+                    if (int.TryParse(txtConnectionTimeout.Text, out var val))
+                    {
+                        _settings.ConnectionTimeoutSeconds = Math.Max(1, val);
+                        _ftpService.ApplyOptions(_settings.ConnectionTimeoutSeconds, _settings.MaxRetryAttempts, _settings.UsePassiveMode);
+                        _ = _settings_service.SaveAsync(_settings);
+                    }
+                    else
+                    {
+                        txtConnectionTimeout.Text = _settings.ConnectionTimeoutSeconds.ToString();
+                    }
+                };
+
+                txtMaxRetries.LostFocus += (s, ev) =>
+                {
+                    if (int.TryParse(txtMaxRetries.Text, out var val))
+                    {
+                        _settings.MaxRetryAttempts = Math.Max(0, val);
+                        _ftpService.ApplyOptions(_settings.ConnectionTimeoutSeconds, _settings.MaxRetryAttempts, _settings.UsePassiveMode);
+                        _ = _settings_service.SaveAsync(_settings);
+                    }
+                    else
+                    {
+                        txtMaxRetries.Text = _settings.MaxRetryAttempts.ToString();
+                    }
+                };
+
+                chkUsePassiveMode.Checked += (s, ev) => { _settings.UsePassiveMode = true; _ftpService.ApplyOptions(_settings.ConnectionTimeoutSeconds, _settings.MaxRetryAttempts, _settings.UsePassiveMode); _ = _settings_service.SaveAsync(_settings); };
+                chkUsePassiveMode.Unchecked += (s, ev) => { _settings.UsePassiveMode = false; _ftpService.ApplyOptions(_settings.ConnectionTimeoutSeconds, _settings.MaxRetryAttempts, _settings.UsePassiveMode); _ = _settings_service.SaveAsync(_settings); };
+
+                txtLogRetentionDays.LostFocus += (s, ev) =>
+                {
+                    if (int.TryParse(txtLogRetentionDays.Text, out var val))
+                    {
+                        _settings.LogRetentionDays = Math.Max(1, val);
+                        _logging_service?.ApplySettings(_logFilePath, _settings);
+                        _ = _settings_service.SaveAsync(_settings);
+                    }
+                    else
+                    {
+                        txtLogRetentionDays.Text = _settings.LogRetentionDays.ToString();
+                    }
+                };
+
+                // Logging handlers
+                chkLogToFile.Checked += (s, ev) => { _settings.LogToFile = true; _logging_service?.ApplySettings(_logFilePath, _settings); _ = _settings_service.SaveAsync(_settings); };
+                chkLogToFile.Unchecked += (s, ev) => { _settings.LogToFile = false; _logging_service?.ApplySettings(_logFilePath, _settings); _ = _settings_service.SaveAsync(_settings); };
+
+                cmbMinimumLogLevel.SelectionChanged += (s, ev) =>
+                {
+                    var selected = cmbMinimumLogLevel.SelectedItem as ComboBoxItem;
+                    if (selected != null)
+                    {
+                        _settings.MinimumLogLevel = selected.Content?.ToString() ?? "Info";
+                        _logging_service?.ApplySettings(_logFilePath, _settings);
+                        _ = _settings_service.SaveAsync(_settings);
+                    }
+                };
+
+                txtMaxLogLines.LostFocus += (s, ev) =>
+                {
+                    if (int.TryParse(txtMaxLogLines.Text, out var maxLines))
+                    {
+                        _settings.MaxLogLines = Math.Max(0, maxLines);
+                        _ = _settings_service.SaveAsync(_settings);
+                    }
+                    else
+                    {
+                        txtMaxLogLines.Text = _settings.MaxLogLines.ToString();
+                    }
+                };
+
+                // Credentials list actions
+                btnRefreshCredentials.Click += (s, ev) => BtnRefreshCredentials_Click(s, ev);
+                btnDeleteCredential.Click += (s, ev) => BtnDeleteSavedCredential_Click(s, ev);
+
+                // Recipient management
+                btnAddRecipient.Click += (s, ev) => BtnAddRecipient_Click(s, ev);
+                btnRemoveRecipient.Click += (s, ev) => BtnRemoveRecipient_Click(s, ev);
+
+                // Weekday changes persist
+                Action persist = () => PersistWeekdays();
+                chkMon.Checked += (s, ev) => persist(); chkMon.Unchecked += (s, ev) => persist();
+                chkTue.Checked += (s, ev) => persist(); chkTue.Unchecked += (s, ev) => persist();
+                chkWed.Checked += (s, ev) => persist(); chkWed.Unchecked += (s, ev) => persist();
+                chkThu.Checked += (s, ev) => persist(); chkThu.Unchecked += (s, ev) => persist();
+                chkFri.Checked += (s, ev) => persist(); chkFri.Unchecked += (s, ev) => persist();
+                chkSat.Checked += (s, ev) => persist(); chkSat.Unchecked += (s, ev) => persist();
+                chkSun.Checked += (s, ev) => persist(); chkSun.Unchecked += (s, ev) => persist();
+
+                // Alerts master switches
+                chkAlertsEnabled.Checked += (s, ev) =>
+                {
+                    _settings.AlertsEnabled = true; _ = _settings_service.SaveAsync(_settings);
+                    var always = chkAlertAlways.IsChecked == true;
+                    chkMon.IsEnabled = !always; chkTue.IsEnabled = !always; chkWed.IsEnabled = !always; chkThu.IsEnabled = !always; chkFri.IsEnabled = !always; chkSat.IsEnabled = !always; chkSun.IsEnabled = !always;
+                    txtWorkStart.IsEnabled = !always; txtWorkEnd.IsEnabled = !always; txtLunchStart.IsEnabled = !always; txtLunchEnd.IsEnabled = !always; txtAlertThreshold.IsEnabled = true;
+                };
+
+                chkAlertsEnabled.Unchecked += (s, ev) =>
+                {
+                    _settings.AlertsEnabled = false; _ = _settings_service.SaveAsync(_settings);
+                    chkMon.IsEnabled = chkTue.IsEnabled = chkWed.IsEnabled = chkThu.IsEnabled = chkFri.IsEnabled = chkSat.IsEnabled = chkSun.IsEnabled = false;
+                    txtWorkStart.IsEnabled = txtWorkEnd.IsEnabled = txtLunchStart.IsEnabled = txtLunchEnd.IsEnabled = txtAlertThreshold.IsEnabled = false;
+                };
+
+                chkAlertAlways.Checked += (s, ev) =>
+                {
+                    _settings.AlertAlways = true; _ = _settings_service.SaveAsync(_settings);
+                    chkMon.IsEnabled = chkTue.IsEnabled = chkWed.IsEnabled = chkThu.IsEnabled = chkFri.IsEnabled = chkSat.IsEnabled = chkSun.IsEnabled = false;
+                    txtWorkStart.IsEnabled = txtWorkEnd.IsEnabled = txtLunchStart.IsEnabled = txtLunchEnd.IsEnabled = false;
+                };
+
+                chkAlertAlways.Unchecked += (s, ev) =>
+                {
+                    _settings.AlertAlways = false; _ = _settings_service.SaveAsync(_settings);
+                    var enabled = chkAlertsEnabled.IsChecked == true;
+                    chkMon.IsEnabled = chkTue.IsEnabled = chkWed.IsEnabled = chkThu.IsEnabled = chkFri.IsEnabled = chkSat.IsEnabled = chkSun.IsEnabled = enabled;
+                    txtWorkStart.IsEnabled = txtWorkEnd.IsEnabled = txtLunchStart.IsEnabled = txtLunchEnd.IsEnabled = enabled;
+                };
+            }
+            catch { }
+
+            // Populate saved credentials list (best-effort)
             try
             {
                 var list = _credentialService.ListSavedCredentials();
-                // we will look for a ListBox named lstSavedCredentials in XAML
-                try
+                var lb = this.FindName("lstSavedCredentials") as System.Windows.Controls.ListBox;
+                if (lb != null)
                 {
-                    var lb = this.FindName("lstSavedCredentials") as System.Windows.Controls.ListBox;
-                    if (lb != null)
+                    lb.Items.Clear();
+                    foreach (var item in list)
                     {
-                        lb.Items.Clear();
-                        foreach (var item in list)
-                        {
-                            lb.Items.Add($"{item.Host} : {item.Username}");
-                        }
+                        var label = string.Equals(item.Category, "smtp", StringComparison.OrdinalIgnoreCase) ? "[SMTP]" : "[FTP]";
+                        lb.Items.Add($"{label} {item.Host} : {item.Username}");
                     }
                 }
-                catch { }
             }
             catch { }
 
-            // other initialization
+            // Final initialization steps
             UpdateResponsiveSidebar();
             ClearLogIfNeeded();
             UpdateSidebarStatus(false);
             UpdateSidebarStats();
 
-            // start log flush timer
+            // Start log flush timer
             try
             {
                 _logFlushTimer = new System.Windows.Threading.DispatcherTimer(System.Windows.Threading.DispatcherPriority.Background)
@@ -305,7 +357,7 @@ namespace FTP_Tool
             }
             catch { }
 
-            // restore previously viewed page (avoid animation during initial load)
+            // Restore last page without animation
             try
             {
                 var page = string.IsNullOrWhiteSpace(_settings.LastPage) ? "Monitor" : _settings.LastPage!;
@@ -315,20 +367,12 @@ namespace FTP_Tool
 
             _isLoaded = true;
 
-            // Auto-start monitoring if requested
+            // Auto-start monitoring if requested and inputs valid
             try
             {
-                if (_settings.StartMonitoringOnLaunch)
+                if (_settings.StartMonitoringOnLaunch && ValidateInputs())
                 {
-                    // validate inputs before starting
-                    if (ValidateInputs())
-                    {
-                        BtnStart_Click(this, new RoutedEventArgs());
-                    }
-                    else
-                    {
-                        Log("StartMonitoringOnLaunch requested but inputs invalid; monitoring not started.", LogLevel.Warning);
-                    }
+                    BtnStart_Click(this, new RoutedEventArgs());
                 }
             }
             catch (Exception ex)
@@ -336,20 +380,11 @@ namespace FTP_Tool
                 Log($"Failed to auto-start monitoring: {ex.Message}", LogLevel.Error);
             }
 
-            // If application launched with --startup, and user wants start minimized, hide to tray.
+            // Handle startup args (minimize to tray when launched by Windows)
             try
             {
                 var args = Environment.GetCommandLineArgs();
-                var startedFromRun = false;
-                foreach (var a in args)
-                {
-                    if (string.Equals(a, "--startup", StringComparison.OrdinalIgnoreCase) || string.Equals(a, "/startup", StringComparison.OrdinalIgnoreCase))
-                    {
-                        startedFromRun = true;
-                        break;
-                    }
-                }
-
+                bool startedFromRun = args.Any(a => string.Equals(a, "--startup", StringComparison.OrdinalIgnoreCase) || string.Equals(a, "/startup", StringComparison.OrdinalIgnoreCase));
                 if (startedFromRun && _settings.StartMinimizedOnStartup)
                 {
                     HideToTray();
@@ -419,11 +454,16 @@ namespace FTP_Tool
                 try { _settings.UsePassiveMode = chkUsePassiveMode.IsChecked == true; } catch { }
                 if (int.TryParse(txtLogRetentionDays.Text, out var days)) _settings.LogRetentionDays = Math.Max(1, days);
 
+                // persist alert settings
+                try { _settings.AlertsEnabled = chkAlertsEnabled.IsChecked == true; } catch { }
+                try { _settings.AlertAlways = chkAlertAlways.IsChecked == true; } catch { }
+
                 if (_settings_service != null) await _settings_service.SaveAsync(_settings);
 
                 try
                 {
-                    _credentialService.Save(_settings.Host ?? string.Empty, _settings.Username ?? string.Empty, txtPassword.Password ?? string.Empty);
+                    // explicitly save as 'ftp' category
+                    _credentialService.Save(_settings.Host ?? string.Empty, _settings.Username ?? string.Empty, txtPassword.Password ?? string.Empty, "ftp");
                 }
                 catch { }
             }

@@ -61,6 +61,9 @@ namespace FTP_Tool
         // expose collection for XAML binding
         public ObservableCollection<LogEntry> _displayedLogEntriesPublic => _displayedLogEntries;
 
+        // Email service
+        private EmailService? _emailService;
+
         public MainWindow()
         {
             InitializeComponent();
@@ -95,6 +98,93 @@ namespace FTP_Tool
                 _logging_service = new LoggingService(_logFilePath, _settings);
             }
             catch { }
+        }
+
+        private async Task SendTestEmailAsync()
+        {
+            // persist UI values into settings first
+            try
+            {
+                _settings.SmtpHost = txtSmtpHost.Text.Trim();
+                _settings.SmtpPort = int.TryParse(txtSmtpPort.Text, out var p) ? p : 25;
+                _settings.SmtpEnableSsl = chkSmtpSsl.IsChecked == true;
+                _settings.SmtpUsername = txtSmtpUser.Text.Trim();
+                // store smtp password securely
+                try { _credentialService.Save(_settings.SmtpHost ?? string.Empty, _settings.SmtpUsername ?? string.Empty, txtSmtpPass.Password ?? string.Empty, "smtp"); } catch { }
+
+                _settings.EmailFrom = txtEmailFrom.Text.Trim();
+                // gather recipients from listbox
+                try
+                {
+                    var recips = lstEmailRecipients.Items.Cast<object>().Select(o => o.ToString()).Where(s => !string.IsNullOrWhiteSpace(s)).ToArray();
+                    _settings.EmailRecipients = string.Join(";", recips);
+                }
+                catch { _settings.EmailRecipients = string.Empty; }
+
+                // weekdays persisted separately via PersistWeekdays called on checkbox changes
+                _settings.WorkStart = txtWorkStart.Text.Trim();
+                _settings.WorkEnd = txtWorkEnd.Text.Trim();
+                _settings.LunchStart = txtLunchStart.Text.Trim();
+                _settings.LunchEnd = txtLunchEnd.Text.Trim();
+                _settings.AlertThresholdMinutes = int.TryParse(txtAlertThreshold.Text, out var th) ? th : 15;
+
+                await _settings_service.SaveAsync(_settings);
+            }
+            catch { }
+
+            // create email service lazily
+            try
+            {
+                _emailService = new EmailService(_settings, _credentialService);
+                await _emailService.SendTestEmailAsync();
+                Log("Test email sent successfully.", LogLevel.Info);
+                global::System.Windows.MessageBox.Show("Test email sent.", "Email", MessageBoxButton.OK, MessageBoxImage.Information);
+            }
+            catch (Exception ex)
+            {
+                Log($"Sending test email failed: {ex.Message}", LogLevel.Error);
+                throw;
+            }
+        }
+
+        private async void BtnTestAlert_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                // persist settings and save SMTP credential
+                try
+                {
+                    _settings.SmtpHost = txtSmtpHost.Text.Trim();
+                    _settings.SmtpPort = int.TryParse(txtSmtpPort.Text, out var p) ? p : 25;
+                    _settings.SmtpEnableSsl = chkSmtpSsl.IsChecked == true;
+                    _settings.SmtpUsername = txtSmtpUser.Text.Trim();
+                    try { _credentialService.Save(_settings.SmtpHost ?? string.Empty, _settings.SmtpUsername ?? string.Empty, txtSmtpPass.Password ?? string.Empty, "smtp"); } catch { }
+
+                    _settings.EmailFrom = txtEmailFrom.Text.Trim();
+                    try
+                    {
+                        var recips = lstEmailRecipients.Items.Cast<object>().Select(o => o.ToString()).Where(s => !string.IsNullOrWhiteSpace(s)).ToArray();
+                        _settings.EmailRecipients = string.Join(";", recips);
+                    }
+                    catch { _settings.EmailRecipients = string.Empty; }
+
+                    await _settings_service.SaveAsync(_settings);
+                }
+                catch { }
+
+                // create service if needed
+                if (_emailService == null) _emailService = new EmailService(_settings, _credentialService);
+
+                // send a simple alert email
+                await _emailService.SendEmailAsync("FTP Monitor - Alert (test)", "This is a simulated alert from FTP Monitor (test). Please ignore.");
+                Log("Test alert email sent.", LogLevel.Info);
+                global::System.Windows.MessageBox.Show("Test alert sent.", "Email", MessageBoxButton.OK, MessageBoxImage.Information);
+            }
+            catch (Exception ex)
+            {
+                Log($"Test alert failed: {ex.Message}", LogLevel.Error);
+                global::System.Windows.MessageBox.Show($"Failed to send test alert: {ex.Message}", "Email Error", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
         }
     }
 }

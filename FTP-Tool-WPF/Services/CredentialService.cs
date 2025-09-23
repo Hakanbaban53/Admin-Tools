@@ -9,22 +9,23 @@ namespace FTP_Tool.Services
     // Simple wrapper for Windows Credential Manager using Cred* APIs.
     public class CredentialService
     {
-        private static string MakeTarget(string host, string username)
+        private static string MakeTarget(string host, string username, string category)
         {
             host ??= string.Empty;
             username ??= string.Empty;
-            return $"FTP-Tool:{host}:{username}";
+            category ??= "ftp";
+            return $"FTP-Tool:{category}:{host}:{username}";
         }
 
-        public void Save(string host, string username, string password)
+        public void Save(string host, string username, string password, string category = "ftp")
         {
             if (string.IsNullOrEmpty(password))
             {
-                Delete(host, username);
+                Delete(host, username, category);
                 return;
             }
 
-            var target = MakeTarget(host, username);
+            var target = MakeTarget(host, username, category);
 
             IntPtr targetPtr = IntPtr.Zero;
             IntPtr userPtr = IntPtr.Zero;
@@ -84,18 +85,18 @@ namespace FTP_Tool.Services
             }
         }
 
-        public (string Username, string Password)? Load(string host, string username)
+        public (string Username, string Password)? Load(string host, string username, string category = "ftp")
         {
-            var target = MakeTarget(host, username);
+            var target = MakeTarget(host, username, category);
 
             // Try reading the exact stored target first
             if (TryReadCredential(target, out var cred)) return cred;
 
             // As a fallback, try using trimmed host/username forms (normalize whitespace)
-            var altTarget = MakeTarget((host ?? string.Empty).Trim(), (username ?? string.Empty).Trim());
+            var altTarget = MakeTarget((host ?? string.Empty).Trim(), (username ?? string.Empty).Trim(), category);
             if (altTarget != target && TryReadCredential(altTarget, out cred)) return cred;
 
-            // Final fallback: enumerate credentials and look for ones with our prefix and matching host or username
+            // Final fallback: enumerate credentials and look for ones with our prefix and matching category/host/username
             try
             {
                 if (NativeMethods.CredEnumerate("FTP-Tool:*", 0, out var count, out var pCredentials))
@@ -110,28 +111,30 @@ namespace FTP_Tool.Services
                             var targetName = Marshal.PtrToStringUni(native.TargetName) ?? string.Empty;
                             if (!targetName.StartsWith("FTP-Tool:", StringComparison.OrdinalIgnoreCase)) continue;
 
-                            // parse targetName format FTP-Tool:host:username
-                            var parts = targetName.Split(new[] { ':' }, 3);
-                            if (parts.Length >= 2)
+                            // parse targetName format FTP-Tool:category:host:username
+                            var parts = targetName.Split(new[] { ':' }, 4);
+                            if (parts.Length < 2) continue;
+                            var storedCategory = parts.Length >= 2 ? parts[1] : string.Empty;
+                            var storedHost = parts.Length >= 3 ? parts[2] : string.Empty;
+                            var storedUser = parts.Length >= 4 ? parts[3] : string.Empty;
+
+                            if (!string.IsNullOrEmpty(category) && !string.Equals(storedCategory, category, StringComparison.OrdinalIgnoreCase)) continue;
+
+                            if (!string.IsNullOrEmpty(host) && string.Equals(storedHost, host, StringComparison.OrdinalIgnoreCase) ||
+                                !string.IsNullOrEmpty(username) && string.Equals(storedUser, username, StringComparison.OrdinalIgnoreCase) ||
+                                (string.IsNullOrEmpty(host) && string.IsNullOrEmpty(username)))
                             {
-                                var storedHost = parts.Length >= 2 ? parts[1] : string.Empty;
-                                var storedUser = parts.Length >= 3 ? parts[2] : string.Empty;
-                                if (!string.IsNullOrEmpty(host) && string.Equals(storedHost, host, StringComparison.OrdinalIgnoreCase) ||
-                                    !string.IsNullOrEmpty(username) && string.Equals(storedUser, username, StringComparison.OrdinalIgnoreCase) ||
-                                    (string.IsNullOrEmpty(host) && string.IsNullOrEmpty(username)))
+                                string user = string.Empty;
+                                if (native.UserName != IntPtr.Zero)
+                                    user = Marshal.PtrToStringUni(native.UserName) ?? string.Empty;
+
+                                string pass = string.Empty;
+                                if (native.CredentialBlob != IntPtr.Zero && native.CredentialBlobSize > 0)
                                 {
-                                    string user = string.Empty;
-                                    if (native.UserName != IntPtr.Zero)
-                                        user = Marshal.PtrToStringUni(native.UserName) ?? string.Empty;
-
-                                    string pass = string.Empty;
-                                    if (native.CredentialBlob != IntPtr.Zero && native.CredentialBlobSize > 0)
-                                    {
-                                        pass = Marshal.PtrToStringUni(native.CredentialBlob) ?? string.Empty;
-                                    }
-
-                                    return (user, pass);
+                                    pass = Marshal.PtrToStringUni(native.CredentialBlob) ?? string.Empty;
                                 }
+
+                                return (user, pass);
                             }
                         }
                     }
@@ -183,9 +186,9 @@ namespace FTP_Tool.Services
             return false;
         }
 
-        public void Delete(string host, string username)
+        public void Delete(string host, string username, string category = "ftp")
         {
-            var target = MakeTarget(host, username);
+            var target = MakeTarget(host, username, category);
             try
             {
                 NativeMethods.CredDelete(target, NativeMethods.CredentialType.Generic, 0);
@@ -194,9 +197,9 @@ namespace FTP_Tool.Services
         }
 
         // New: list saved credentials (host, username) for the UI
-        public (string Host, string Username)[] ListSavedCredentials()
+        public (string Category, string Host, string Username)[] ListSavedCredentials(string category = "ftp")
         {
-            var result = new List<(string Host, string Username)>();
+            var result = new List<(string Category, string Host, string Username)>();
             try
             {
                 if (NativeMethods.CredEnumerate("FTP-Tool:*", 0, out var count, out var pCredentials))
@@ -211,11 +214,30 @@ namespace FTP_Tool.Services
                             var targetName = Marshal.PtrToStringUni(native.TargetName) ?? string.Empty;
                             if (!targetName.StartsWith("FTP-Tool:", StringComparison.OrdinalIgnoreCase)) continue;
 
-                            var parts = targetName.Split(new[] { ':' }, 3);
-                            var storedHost = parts.Length >= 2 ? parts[1] : string.Empty;
-                            var storedUser = parts.Length >= 3 ? parts[2] : string.Empty;
+                            var parts = targetName.Split(new[] { ':' }, 4);
 
-                            result.Add((storedHost, storedUser));
+                            string storedCategory;
+                            string storedHost;
+                            string storedUser;
+
+                            if (parts.Length == 3)
+                            {
+                                // legacy format: FTP-Tool:host:username
+                                storedCategory = "ftp";
+                                storedHost = parts.Length >= 2 ? parts[1] : string.Empty;
+                                storedUser = parts.Length >= 3 ? parts[2] : string.Empty;
+                            }
+                            else
+                            {
+                                // new format: FTP-Tool:category:host:username
+                                storedCategory = parts.Length >= 2 ? parts[1] : string.Empty;
+                                storedHost = parts.Length >= 3 ? parts[2] : string.Empty;
+                                storedUser = parts.Length >= 4 ? parts[3] : string.Empty;
+                            }
+
+                            if (!string.IsNullOrEmpty(category) && !string.Equals(storedCategory, category, StringComparison.OrdinalIgnoreCase)) continue;
+
+                            result.Add((storedCategory, storedHost, storedUser));
                         }
                     }
                     finally

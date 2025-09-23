@@ -47,5 +47,37 @@ namespace FTP_Tool.Models
 
         // How many days to keep log files (retained files count will be approx equal to days)
         public int LogRetentionDays { get; set; } = 30;
+
+        // --- Email / Alert settings ---
+        // SMTP server settings
+        public string SmtpHost { get; set; } = string.Empty;
+        public int SmtpPort { get; set; } = 25;
+        public bool SmtpEnableSsl { get; set; } = false;
+        public string SmtpUsername { get; set; } = string.Empty;
+        public string SmtpPassword { get; set; } = string.Empty; // stored plain-text for now
+
+        // Email addresses
+        public string EmailFrom { get; set; } = string.Empty;
+        // Recipients are stored as a single string separated by ';'
+        public string EmailRecipients { get; set; } = string.Empty;
+
+        // Alert schedule
+        // Comma separated list of enabled weekdays (e.g. "Mon,Tue,Wed") -- or empty for none
+        public string AlertWeekdays { get; set; } = "Mon,Tue,Wed,Thu,Fri";
+
+        // Work hours and lunch interval stored as HH:mm strings
+        public string WorkStart { get; set; } = "08:00";
+        public string WorkEnd { get; set; } = "17:00";
+        public string LunchStart { get; set; } = "12:00";
+        public string LunchEnd { get; set; } = "13:00";
+
+        // Minutes to wait without any download before triggering alert
+        public int AlertThresholdMinutes { get; set; } = 15;
+
+        // Whether alerts are enabled at all (UI default: disabled to reduce noise)
+        public bool AlertsEnabled { get; set; } = false;
+
+        // If true, alerts are active at all times (ignore weekdays/work hours)
+        public bool AlertAlways { get; set; } = false;
     }
 }

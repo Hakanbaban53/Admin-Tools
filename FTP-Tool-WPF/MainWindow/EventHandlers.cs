@@ -6,6 +6,8 @@ using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media.Animation;
+using System.Linq;
+using System.Net.Mail;
 
 namespace FTP_Tool
 {
@@ -37,7 +39,8 @@ namespace FTP_Tool
 
             try
             {
-                _credentialService.Save(_settings.Host ?? string.Empty, _settings.Username ?? string.Empty, txtPassword.Password ?? string.Empty);
+                // explicitly save as 'ftp' category
+                _credentialService.Save(_settings.Host ?? string.Empty, _settings.Username ?? string.Empty, txtPassword.Password ?? string.Empty, "ftp");
             }
             catch { }
 
@@ -168,6 +171,13 @@ namespace FTP_Tool
             if (FloatingSidebar.Visibility == Visibility.Visible) HideFloatingSidebar();
         }
 
+        private void BtnNavAlerts_Click(object sender, RoutedEventArgs e)
+        {
+            ShowPage("Alerts");
+            SetFloatingSidebarActive("Alerts");
+            if (FloatingSidebar.Visibility == Visibility.Visible) HideFloatingSidebar();
+        }
+
         private void BtnNavAbout_Click(object sender, RoutedEventArgs e)
         {
             ShowPage("About");
@@ -242,6 +252,7 @@ namespace FTP_Tool
                 var btnM = FindName("btnFloatingNavMonitor") as System.Windows.Controls.Button;
                 var btnS = FindName("btnFloatingNavSettings") as System.Windows.Controls.Button;
                 var btnA = FindName("btnFloatingNavAbout") as System.Windows.Controls.Button;
+                var btnL = FindName("btnFloatingNavAlerts") as System.Windows.Controls.Button; // optional
 
                 if (btnM != null && btnS != null && btnA != null)
                 {
@@ -250,6 +261,8 @@ namespace FTP_Tool
                     btnS.Style = (Style)FindResource("NavButton");
                     btnA.Style = (Style)FindResource("NavButton");
 
+                    if (btnL != null) btnL.Style = (Style)FindResource("NavButton");
+
                     switch (page)
                     {
                         case "Monitor":
@@ -257,6 +270,9 @@ namespace FTP_Tool
                             break;
                         case "Settings":
                             btnS.Style = (Style)FindResource("NavButtonActive");
+                            break;
+                        case "Alerts":
+                            if (btnL != null) btnL.Style = (Style)FindResource("NavButtonActive");
                             break;
                         case "About":
                             btnA.Style = (Style)FindResource("NavButtonActive");
@@ -276,10 +292,17 @@ namespace FTP_Tool
                 if (lb == null) return;
 
                 lb.Items.Clear();
-                var list = _credentialService.ListSavedCredentials();
-                foreach (var item in list)
+                // show both ftp and smtp credentials grouped
+                var ftpList = _credentialService.ListSavedCredentials("ftp");
+                foreach (var item in ftpList)
                 {
-                    lb.Items.Add($"{item.Host} : {item.Username}");
+                    lb.Items.Add($"[FTP] {item.Host} : {item.Username}");
+                }
+
+                var smtpList = _credentialService.ListSavedCredentials("smtp");
+                foreach (var item in smtpList)
+                {
+                    lb.Items.Add($"[SMTP] {item.Host} : {item.Username}");
                 }
             }
             catch (Exception ex)
@@ -288,47 +311,211 @@ namespace FTP_Tool
             }
         }
 
+        // Test email click handler added (implementation in MainWindow)
+        private async void BtnTestEmail_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                await this.SendTestEmailAsync();
+            }
+            catch (Exception ex)
+            {
+                Log($"Test email failed: {ex.Message}", LogLevel.Error);
+                global::System.Windows.MessageBox.Show($"Failed to send test email: {ex.Message}", "Email Error", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+
         private void BtnDeleteSavedCredential_Click(object sender, RoutedEventArgs e)
         {
             try
             {
                 var lb = this.FindName("lstSavedCredentials") as System.Windows.Controls.ListBox;
-                if (lb == null) return;
-                if (lb.SelectedItem == null) return;
+                if (lb == null || lb.SelectedItem == null) return;
 
                 var sel = lb.SelectedItem.ToString();
                 if (string.IsNullOrEmpty(sel)) return;
 
-                // expect format host : username
-                var partsArr = sel.Split(new[] { ':' }, 2);
-                var host = partsArr.Length >= 1 ? partsArr[0].Trim() : string.Empty;
-                var user = partsArr.Length >= 2 ? partsArr[1].Trim() : string.Empty;
+                // expected format: "[CATEGORY] host : username"
+                var category = "ftp";
+                var host = string.Empty;
+                var user = string.Empty;
 
-                var res = System.Windows.MessageBox.Show($"Delete saved credential for '{host} : {user}'?", "Confirm", MessageBoxButton.YesNo, MessageBoxImage.Question);
-                if (res != MessageBoxResult.Yes) return;
-
-                _credentialService.Delete(host, user);
-                lb.Items.Remove(lb.SelectedItem);
-
-                // clear password field in UI if it matches the deleted credential context
                 try
                 {
+                    if (sel.StartsWith("[SMTP]", StringComparison.OrdinalIgnoreCase)) category = "smtp";
+                    else if (sel.StartsWith("[FTP]", StringComparison.OrdinalIgnoreCase)) category = "ftp";
+
+                    // remove prefix
+                    var rest = sel;
+                    var idx = sel.IndexOf(']');
+                    if (idx >= 0 && idx + 1 < sel.Length) rest = sel.Substring(idx + 1).Trim();
+
+                    var partsArr = rest.Split(new[] { ':' }, 2);
+                    host = partsArr.Length >= 1 ? partsArr[0].Trim() : string.Empty;
+                    user = partsArr.Length >= 2 ? partsArr[1].Trim() : string.Empty;
+                }
+                catch { }
+
+                var res = System.Windows.MessageBox.Show($"Delete saved credential for '{category.ToUpper()} {host} : {user}'?", "Confirm", MessageBoxButton.YesNo, MessageBoxImage.Question);
+                if (res != MessageBoxResult.Yes) return;
+
+                _credentialService.Delete(host, user, category);
+                lb.Items.Remove(lb.SelectedItem);
+
+                try
+                {
+                    // Only clear the appropriate password field depending on category
                     Dispatcher.Invoke(() =>
                     {
-                        try { txtPassword.Password = string.Empty; } catch { }
+                        try
+                        {
+                            if (string.Equals(category, "ftp", StringComparison.OrdinalIgnoreCase))
+                            {
+                                txtPassword.Password = string.Empty;
+                            }
+                            else if (string.Equals(category, "smtp", StringComparison.OrdinalIgnoreCase))
+                            {
+                                try { txtSmtpPass.Password = string.Empty; } catch { }
+                            }
+                        }
+                        catch { }
                     });
-
-                    // best-effort: save settings (username/host unchanged) so future loads won't populate password
                     try { var _ = _settings_service?.SaveAsync(_settings); } catch { }
                 }
                 catch { }
 
-                Log($"Deleted credential for {host} : {user}", LogLevel.Info);
+                Log($"Deleted credential for {category.ToUpper()} {host} : {user}", LogLevel.Info);
             }
             catch (Exception ex)
             {
                 Log($"Failed to delete credential: {ex.Message}", LogLevel.Error);
             }
         }
+
+        private void BtnAddRecipient_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                var text = txtNewRecipient.Text?.Trim();
+                if (string.IsNullOrEmpty(text)) return;
+
+                // use MailAddress for validation
+                try
+                {
+                    var m = new MailAddress(text);
+                }
+                catch
+                {
+                    System.Windows.MessageBox.Show("Please enter a valid email address.", "Invalid", MessageBoxButton.OK, MessageBoxImage.Warning);
+                    return;
+                }
+
+                // prevent duplicates (case-insensitive)
+                var exists = lstEmailRecipients.Items.Cast<object>().Any(o => string.Equals(o?.ToString()?.Trim(), text, StringComparison.OrdinalIgnoreCase));
+                if (exists)
+                {
+                    System.Windows.MessageBox.Show("Recipient already exists in the list.", "Duplicate", MessageBoxButton.OK, MessageBoxImage.Information);
+                    txtNewRecipient.Text = string.Empty;
+                    return;
+                }
+
+                lstEmailRecipients.Items.Add(text);
+                txtNewRecipient.Text = string.Empty;
+
+                // select newly added item
+                lstEmailRecipients.SelectedIndex = lstEmailRecipients.Items.Count - 1;
+
+                // persist into settings as semicolon separated
+                SaveRecipientsToSettings();
+            }
+            catch (Exception ex)
+            {
+                Log($"Failed to add recipient: {ex.Message}", LogLevel.Error);
+            }
+        }
+
+        private void BtnRemoveRecipient_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                int count = lstEmailRecipients.Items.Count;
+                if (count == 0) return;
+
+                int removeIndex = -1;
+                if (lstEmailRecipients.SelectedIndex >= 0)
+                {
+                    removeIndex = lstEmailRecipients.SelectedIndex;
+                }
+                else
+                {
+                    // nothing selected (e.g. focus moved to button) - remove the last item as a convenience
+                    removeIndex = count - 1;
+                }
+
+                if (removeIndex >= 0 && removeIndex < count)
+                {
+                    lstEmailRecipients.Items.RemoveAt(removeIndex);
+
+                    // restore a sensible selection
+                    if (lstEmailRecipients.Items.Count > 0)
+                    {
+                        var sel = Math.Min(removeIndex, lstEmailRecipients.Items.Count - 1);
+                        lstEmailRecipients.SelectedIndex = sel;
+                    }
+                }
+
+                SaveRecipientsToSettings();
+            }
+            catch (Exception ex)
+            {
+                Log($"Failed to remove recipient: {ex.Message}", LogLevel.Error);
+            }
+        }
+
+        private void SaveRecipientsToSettings()
+        {
+            try
+            {
+                var items = lstEmailRecipients.Items.Cast<object>().Select(o => o.ToString()).Where(s => !string.IsNullOrEmpty(s)).ToArray();
+                _settings.EmailRecipients = string.Join(";", items);
+                var _ = _settings_service.SaveAsync(_settings);
+            }
+            catch { }
+        }
+
+        private void LoadRecipientsFromSettings()
+        {
+            try
+            {
+                lstEmailRecipients.Items.Clear();
+                if (string.IsNullOrWhiteSpace(_settings.EmailRecipients)) return;
+                var parts = _settings.EmailRecipients.Split(new[] { ';' }, StringSplitOptions.RemoveEmptyEntries).Select(s => s.Trim()).Distinct(StringComparer.OrdinalIgnoreCase);
+                foreach (var p in parts) lstEmailRecipients.Items.Add(p);
+            }
+            catch { }
+        }
+
+        private void PersistWeekdays()
+        {
+            try
+            {
+                var days = new[]
+                {
+                    chkMon.IsChecked == true ? "Mon" : null,
+                    chkTue.IsChecked == true ? "Tue" : null,
+                    chkWed.IsChecked == true ? "Wed" : null,
+                    chkThu.IsChecked == true ? "Thu" : null,
+                    chkFri.IsChecked == true ? "Fri" : null,
+                    chkSat.IsChecked == true ? "Sat" : null,
+                    chkSun.IsChecked == true ? "Sun" : null,
+                }.Where(s => s != null).ToArray();
+
+                _settings.AlertWeekdays = string.Join(",", days);
+                var _ = _settings_service.SaveAsync(_settings);
+            }
+            catch { }
+        }
+
+        // Ensure LoadRecipientsFromSettings is called during MainWindow_Loaded in WindowLifecycle.cs
     }
 }

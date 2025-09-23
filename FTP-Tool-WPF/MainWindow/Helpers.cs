@@ -90,13 +90,15 @@ namespace FTP_Tool
                 switch (page)
                 {
                     case "Settings": toShow = SettingsPage; break;
+                    case "Alerts": toShow = AlertsPage; break;
                     case "About": toShow = AboutPage; break;
                     default: toShow = MonitorPage; break;
                 }
 
-                // hide the three main pages then show the requested one
+                // hide the main pages then show the requested one
                 MonitorPage.Visibility = Visibility.Collapsed;
                 SettingsPage.Visibility = Visibility.Collapsed;
+                AlertsPage.Visibility = Visibility.Collapsed;
                 AboutPage.Visibility = Visibility.Collapsed;
 
                 if (animate)
@@ -115,6 +117,7 @@ namespace FTP_Tool
                 var normal = (Style)FindResource("NavButton");
                 btnNavMonitor.Style = page == "Monitor" ? active : normal;
                 btnNavSettings.Style = page == "Settings" ? active : normal;
+                btnNavAlerts.Style = page == "Alerts" ? active : normal;
                 btnNavAbout.Style = page == "About" ? active : normal;
 
                 txtNavStatus.Text = page;
