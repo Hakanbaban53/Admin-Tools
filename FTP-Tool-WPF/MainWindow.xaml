@@ -742,80 +742,133 @@
                 </ScrollViewer>
             </Grid>
 
-            <!-- Alerts Page -->
+            <!-- Improved Alerts Page -->
             <Grid x:Name="AlertsPage" Visibility="Collapsed">
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto"/>
                     <RowDefinition Height="*"/>
                 </Grid.RowDefinitions>
 
-                <StackPanel Grid.Row="0" Margin="0,0,0,20">
-                    <TextBlock Text="Alerts" Style="{StaticResource PageTitle}"/>
-                    <TextBlock Text="Configure email notifications and download alert schedule" Style="{StaticResource PageSubtitle}"/>
+                <!-- Page Header -->
+                <StackPanel Grid.Row="0" Margin="0,0,0,24">
+                    <TextBlock Text="Alerts &amp; Notifications" Style="{StaticResource PageTitle}"/>
+                    <TextBlock Text="Configure email notifications and alert schedules to stay informed about download activities" 
+                   Style="{StaticResource PageSubtitle}" TextWrapping="Wrap"/>
                 </StackPanel>
 
                 <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
-                    <StackPanel MaxWidth="700">
+                    <StackPanel MaxWidth="800">
+
+                        <!-- Email Configuration Section -->
                         <Border Style="{StaticResource ModernCard}">
                             <StackPanel>
-                                <TextBlock Text="✉️ Email Settings" Style="{StaticResource HeaderText}"/>
+                                <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
+                                    <TextBlock Text="✉️" FontSize="18" VerticalAlignment="Center"/>
+                                    <TextBlock Text="Email Configuration" Style="{StaticResource HeaderText}" VerticalAlignment="Center" Margin="8,0,0,0"/>
+                                </StackPanel>
 
+                                <TextBlock Text="Configure SMTP settings for sending email notifications" 
+                               Foreground="#605E5C" FontSize="13" Margin="0,-8,0,8"/>
+
+                                <!-- SMTP Settings Grid -->
                                 <Grid>
                                     <Grid.RowDefinitions>
-                                        <RowDefinition Height="Auto"/> <!-- SMTP Host -->
-                                        <RowDefinition Height="Auto"/> <!-- Port -->
-                                        <RowDefinition Height="Auto"/> <!-- Enable SSL -->
-                                        <RowDefinition Height="Auto"/> <!-- Username -->
-                                        <RowDefinition Height="Auto"/> <!-- Password -->
-                                        <RowDefinition Height="Auto"/> <!-- From address -->
-                                        <RowDefinition Height="Auto"/> <!-- Recipients -->
-                                        <RowDefinition Height="Auto"/> <!-- Buttons -->
+                                        <RowDefinition Height="Auto"/>
+                                        <RowDefinition Height="Auto"/>
+                                        <RowDefinition Height="Auto"/>
+                                        <RowDefinition Height="Auto"/>
+                                        <RowDefinition Height="Auto"/>
+                                        <RowDefinition Height="Auto"/>
+                                        <RowDefinition Height="Auto"/>
                                     </Grid.RowDefinitions>
                                     <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="200"/>
+                                        <ColumnDefinition Width="180"/>
                                         <ColumnDefinition Width="*"/>
                                     </Grid.ColumnDefinitions>
 
-                                    <TextBlock Grid.Row="0" Grid.Column="0" Text="SMTP Host:" Style="{StaticResource LabelText}" VerticalAlignment="Center"/>
-                                    <TextBox x:Name="txtSmtpHost" Grid.Row="0" Grid.Column="1" Style="{StaticResource ModernTextBox}"/>
+                                    <!-- SMTP Host -->
+                                    <TextBlock Grid.Row="0" Grid.Column="0" Text="SMTP Server:" Style="{StaticResource LabelText}" VerticalAlignment="Center"/>
+                                    <TextBox x:Name="txtSmtpHost" Grid.Row="0" Grid.Column="1" 
+                                 Style="{StaticResource ModernTextBox}" 
+                                 ToolTip="Enter your SMTP server address (e.g., smtp.gmail.com)"/>
 
-                                    <TextBlock Grid.Row="1" Grid.Column="0" Text="Port:" Style="{StaticResource LabelText}" VerticalAlignment="Center" Margin="0,8,0,0"/>
-                                    <TextBox x:Name="txtSmtpPort" Grid.Row="1" Grid.Column="1" Text="25" Style="{StaticResource ModernTextBox}" Margin="0,8,0,0" Width="120"/>
+                                    <!-- Port and SSL in same row -->
+                                    <TextBlock Grid.Row="1" Grid.Column="0" Text="Port / SSL:" Style="{StaticResource LabelText}" VerticalAlignment="Center" Margin="0,12,0,0"/>
+                                    <StackPanel Grid.Row="1" Grid.Column="1" Orientation="Horizontal" Margin="0,12,0,0">
+                                        <TextBox x:Name="txtSmtpPort" Text="587" Style="{StaticResource ModernTextBox}" Width="80"
+                                     ToolTip="Common ports: 25, 587 (TLS), 465 (SSL)"/>
+                                        <CheckBox x:Name="chkSmtpSsl" Content="Enable SSL/TLS" VerticalAlignment="Center" Margin="12,0,0,0"/>
+                                    </StackPanel>
 
-                                    <TextBlock Grid.Row="2" Grid.Column="0" Text="Enable SSL:" Style="{StaticResource LabelText}" VerticalAlignment="Center" Margin="0,8,0,0"/>
-                                    <CheckBox x:Name="chkSmtpSsl" Grid.Row="2" Grid.Column="1" Content="Enable SSL" Margin="0,8,0,0"/>
+                                    <!-- Credentials Section -->
+                                    <Border Grid.Row="2" Grid.ColumnSpan="2" 
+                                Background="#F8F9FA" CornerRadius="4" Padding="16" Margin="0,16,0,0">
+                                        <Grid>
+                                            <Grid.RowDefinitions>
+                                                <RowDefinition Height="Auto"/>
+                                                <RowDefinition Height="Auto"/>
+                                                <RowDefinition Height="Auto"/>
+                                            </Grid.RowDefinitions>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="180"/>
+                                                <ColumnDefinition Width="*"/>
+                                            </Grid.ColumnDefinitions>
 
-                                    <TextBlock Grid.Row="3" Grid.Column="0" Text="Username:" Style="{StaticResource LabelText}" VerticalAlignment="Center" Margin="0,8,0,0"/>
-                                    <TextBox x:Name="txtSmtpUser" Grid.Row="3" Grid.Column="1" Style="{StaticResource ModernTextBox}" Margin="0,8,0,0"/>
+                                            <TextBlock Grid.Row="0" Grid.ColumnSpan="2" Text="Authentication" FontWeight="SemiBold" Margin="0,0,0,12"/>
 
-                                    <TextBlock Grid.Row="4" Grid.Column="0" Text="Password:" Style="{StaticResource LabelText}" VerticalAlignment="Center" Margin="0,8,0,0"/>
-                                    <PasswordBox x:Name="txtSmtpPass" Grid.Row="4" Grid.Column="1" Style="{StaticResource ModernPasswordBox}" Margin="0,8,0,0"/>
+                                            <TextBlock Grid.Row="1" Grid.Column="0" Text="Username:" Style="{StaticResource LabelText}" VerticalAlignment="Center"/>
+                                            <TextBox x:Name="txtSmtpUser" Grid.Row="1" Grid.Column="1" Style="{StaticResource ModernTextBox}"/>
 
-                                    <TextBlock Grid.Row="5" Grid.Column="0" Text="From address:" Style="{StaticResource LabelText}" VerticalAlignment="Center" Margin="0,8,0,0"/>
-                                    <TextBox x:Name="txtEmailFrom" Grid.Row="5" Grid.Column="1" Style="{StaticResource ModernTextBox}" Margin="0,8,0,0"/>
+                                            <TextBlock Grid.Row="2" Grid.Column="0" Text="Password:" Style="{StaticResource LabelText}" VerticalAlignment="Center" Margin="0,12,0,0"/>
+                                            <PasswordBox x:Name="txtSmtpPass" Grid.Row="2" Grid.Column="1" Style="{StaticResource ModernPasswordBox}" Margin="0,12,0,0"/>
+                                        </Grid>
+                                    </Border>
 
-                                    <TextBlock Grid.Row="6" Grid.Column="0" Text="Recipients:" Style="{StaticResource LabelText}" VerticalAlignment="Top" Margin="0,8,0,0"/>
-                                    <StackPanel Grid.Row="6" Grid.Column="1" Margin="0,8,0,0">
-                                        <ListBox x:Name="lstEmailRecipients" Height="90" HorizontalContentAlignment="Left"/>
+                                    <!-- From Address -->
+                                    <TextBlock Grid.Row="3" Grid.Column="0" Text="From Address:" Style="{StaticResource LabelText}" VerticalAlignment="Center" Margin="0,16,0,0"/>
+                                    <TextBox x:Name="txtEmailFrom" Grid.Row="3" Grid.Column="1" Style="{StaticResource ModernTextBox}" Margin="0,16,0,0"
+                                 ToolTip="Email address that will appear as sender"/>
+
+                                    <!-- Recipients Section -->
+                                    <TextBlock Grid.Row="4" Grid.Column="0" Text="Recipients:" Style="{StaticResource LabelText}" VerticalAlignment="Top" Margin="0,16,0,0"/>
+                                    <StackPanel Grid.Row="4" Grid.Column="1" Margin="0,16,0,0">
+                                        <Border BorderBrush="#E1E5E9" BorderThickness="1" CornerRadius="4" Padding="8">
+                                            <StackPanel>
+                                                <TextBlock Text="Email Recipients" FontSize="12" Foreground="#605E5C" Margin="0,0,0,4"/>
+                                                <ListBox x:Name="lstEmailRecipients" Height="80" BorderThickness="0" Background="Transparent"/>
+                                            </StackPanel>
+                                        </Border>
+
                                         <StackPanel Orientation="Horizontal" Margin="0,8,0,0">
-                                            <TextBox x:Name="txtNewRecipient" Width="240" Style="{StaticResource ModernTextBox}"/>
-                                            <Button x:Name="btnAddRecipient" Click="BtnAddRecipient_Click" Style="{StaticResource SecondaryButton}" Margin="8,0,0,0">Add</Button>
-                                            <Button x:Name="btnRemoveRecipient" Click="BtnRemoveRecipient_Click" Style="{StaticResource SecondaryButton}" Margin="8,0,0,0">Remove</Button>
+                                            <TextBox x:Name="txtNewRecipient" Width="280" Style="{StaticResource ModernTextBox}" />
+                                            <Button x:Name="btnAddRecipient" Click="BtnAddRecipient_Click" Style="{StaticResource SecondaryButton}" Margin="8,0,0,0">
+                                                <StackPanel Orientation="Horizontal">
+                                                    <TextBlock Text="+" FontWeight="Bold" Margin="0,0,6,0"/>
+                                                    <TextBlock Text="Add"/>
+                                                </StackPanel>
+                                            </Button>
+                                            <Button x:Name="btnRemoveRecipient" Click="BtnRemoveRecipient_Click" Style="{StaticResource SecondaryButton}" Margin="8,0,0,0">
+                                                <StackPanel Orientation="Horizontal">
+                                                    <TextBlock Text="−" FontWeight="Bold" Margin="0,0,6,0"/>
+                                                    <TextBlock Text="Remove"/>
+                                                </StackPanel>
+                                            </Button>
                                         </StackPanel>
                                     </StackPanel>
 
-                                    <StackPanel Grid.Row="7" Grid.ColumnSpan="2" Orientation="Horizontal" Margin="0,12,0,0" HorizontalAlignment="Left">
-                                        <Button x:Name="btnTestEmail" Click="BtnTestEmail_Click" Style="{StaticResource SecondaryButton}" Margin="0,0,8,0">
+                                    <!-- Test Buttons -->
+                                    <StackPanel Grid.Row="5" Grid.ColumnSpan="2" Orientation="Horizontal" Margin="0,20,0,0" HorizontalAlignment="Left">
+                                        <Button x:Name="btnTestEmail" Click="BtnTestEmail_Click" Style="{StaticResource SecondaryButton}">
                                             <StackPanel Orientation="Horizontal">
-                                                <TextBlock Text="📧" Margin="0,0,8,0"/>
-                                                <TextBlock Text="Send test email"/>
+                                                <TextBlock Text="📧" FontSize="14"/>
+                                                <TextBlock Text="Test Email Connection" Margin="6,0,0,0"/>
                                             </StackPanel>
                                         </Button>
 
-                                        <Button x:Name="btnTestAlert" Click="BtnTestAlert_Click" Style="{StaticResource SecondaryButton}">
+                                        <Button x:Name="btnTestAlert" Click="BtnTestAlert_Click" Style="{StaticResource SecondaryButton}" Margin="12,0,0,0">
                                             <StackPanel Orientation="Horizontal">
-                                                <TextBlock Text="🚨" Margin="0,0,8,0"/>
-                                                <TextBlock Text="Test Alert"/>
+                                                <TextBlock Text="🚨" FontSize="14"/>
+                                                <TextBlock Text="Send Test Alert" Margin="6,0,0,0"/>
                                             </StackPanel>
                                         </Button>
                                     </StackPanel>
@@ -823,58 +876,140 @@
                             </StackPanel>
                         </Border>
 
+                        <!-- Alert Schedule Section -->
                         <Border Style="{StaticResource ModernCard}">
                             <StackPanel>
-                                <TextBlock Text="⏰ Download Alert Schedule" Style="{StaticResource HeaderText}"/>
+                                <StackPanel>
+                                    <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
+                                        <TextBlock Text="⏰" FontSize="18" VerticalAlignment="Center"/>
+                                        <TextBlock Text="Alert Schedule" Style="{StaticResource HeaderText}" VerticalAlignment="Center" Margin="8,0,0,0"/>
+                                    </StackPanel>
+                                    <TextBlock Text="Configure when and what type of alerts to receive" Style="{StaticResource LabelText}" Margin="0,4,0,0"/>
+                                </StackPanel>
+
+                                <!-- Master Toggle -->
+                                <Border Background="#E8F5E8" BorderBrush="#28A745" BorderThickness="1" CornerRadius="4" Padding="12" Margin="0,8,0,0">
+                                    <CheckBox x:Name="chkAlertsEnabled" Content="Enable email alerts" FontSize="14" FontWeight="SemiBold"/>
+                                </Border>
 
                                 <Grid>
                                     <Grid.RowDefinitions>
-                                        <RowDefinition Height="Auto"/> <!-- Enable alerts -->
-                                        <RowDefinition Height="Auto"/> <!-- Weekdays -->
-                                        <RowDefinition Height="Auto"/> <!-- Work hours -->
-                                        <RowDefinition Height="Auto"/> <!-- Lunch -->
-                                        <RowDefinition Height="Auto"/> <!-- Threshold -->
+                                        <RowDefinition Height="Auto"/>
+                                        <RowDefinition Height="Auto"/>
+                                        <RowDefinition Height="Auto"/>
+                                        <RowDefinition Height="Auto"/>
+                                        <RowDefinition Height="Auto"/>
                                     </Grid.RowDefinitions>
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="200"/>
-                                        <ColumnDefinition Width="*"/>
-                                    </Grid.ColumnDefinitions>
 
-                                    <!-- Master enable/disable for alerts -->
-                                    <CheckBox x:Name="chkAlertsEnabled" Grid.Row="0" Grid.ColumnSpan="2" Content="Enable alerts" FontSize="14" Margin="0,0,0,8"/>
+                                    <!-- Alert Types -->
+                                    <StackPanel Grid.Row="0" Margin="0,8,0,0">
+                                        <TextBlock Text="Alert Types" Style="{StaticResource LabelText}" Margin="0,0,0,8"/>
+                                        <Border Background="#F8F9FA" CornerRadius="4" Padding="16">
+                                            <StackPanel>
+                                                <CheckBox x:Name="chkEmailErrors" Content="Errors (sent immediately)" FontWeight="SemiBold" Foreground="#DC3545" Margin="0,0,0,8"/>
+                                                <CheckBox x:Name="chkEmailWarnings" Content="Warnings (sent immediately)" FontWeight="SemiBold" Foreground="#FD7E14" Margin="0,0,0,8"/>
 
-                                    <TextBlock Grid.Row="1" Grid.Column="0" Text="Weekdays enabled:" Style="{StaticResource LabelText}"/>
-                                    <WrapPanel Grid.Row="1" Grid.Column="1" Margin="0,4,0,0">
-                                        <CheckBox x:Name="chkMon" Content="Mon" Margin="0,0,8,4"/>
-                                        <CheckBox x:Name="chkTue" Content="Tue" Margin="0,0,8,4"/>
-                                        <CheckBox x:Name="chkWed" Content="Wed" Margin="0,0,8,4"/>
-                                        <CheckBox x:Name="chkThu" Content="Thu" Margin="0,0,8,4"/>
-                                        <CheckBox x:Name="chkFri" Content="Fri" Margin="0,0,8,4"/>
-                                        <CheckBox x:Name="chkSat" Content="Sat" Margin="0,0,8,4"/>
-                                        <CheckBox x:Name="chkSun" Content="Sun" Margin="0,0,8,4"/>
-                                        <!-- All-time option -->
-                                        <CheckBox x:Name="chkAlertAlways" Content="All time (ignore schedule)" Margin="12,0,0,4" VerticalAlignment="Center"/>
-                                    </WrapPanel>
-
-                                    <TextBlock Grid.Row="2" Grid.Column="0" Text="Work hours (start-end):" Style="{StaticResource LabelText}" Margin="0,12,0,0"/>
-                                    <StackPanel Grid.Row="2" Grid.Column="1" Orientation="Horizontal" Margin="0,12,0,0">
-                                        <TextBox x:Name="txtWorkStart" Width="120" Text="08:00" Style="{StaticResource ModernTextBox}"/>
-                                        <TextBlock Text="-" Margin="8,0" VerticalAlignment="Center"/>
-                                        <TextBox x:Name="txtWorkEnd" Width="120" Text="17:00" Style="{StaticResource ModernTextBox}"/>
+                                                <StackPanel>
+                                                    <CheckBox x:Name="chkEmailInfo" Content="Info summaries (batched)" FontWeight="SemiBold" Foreground="#007BFF"/>
+                                                    <StackPanel Orientation="Horizontal" Margin="24,8,0,0">
+                                                        <TextBlock Text="Send summary every:" VerticalAlignment="Center"/>
+                                                        <TextBox x:Name="txtEmailSummaryInterval" Width="60" Text="60" Style="{StaticResource ModernTextBox}" Margin="8,0,0,0"/>
+                                                        <TextBlock Text="minutes" VerticalAlignment="Center" Margin="8,0,0,0"/>
+                                                    </StackPanel>
+                                                </StackPanel>
+                                            </StackPanel>
+                                        </Border>
                                     </StackPanel>
 
-                                    <TextBlock Grid.Row="3" Grid.Column="0" Text="Lunch (start-end):" Style="{StaticResource LabelText}" Margin="0,12,0,0"/>
-                                    <StackPanel Grid.Row="3" Grid.Column="1" Orientation="Horizontal" Margin="0,12,0,0">
-                                        <TextBox x:Name="txtLunchStart" Width="120" Text="12:00" Style="{StaticResource ModernTextBox}"/>
-                                        <TextBlock Text="-" Margin="8,0" VerticalAlignment="Center"/>
-                                        <TextBox x:Name="txtLunchEnd" Width="120" Text="13:00" Style="{StaticResource ModernTextBox}"/>
+                                    <!-- Schedule Settings -->
+                                    <StackPanel Grid.Row="1" Margin="0,20,0,0">
+                                        <TextBlock Text="Schedule Settings" Style="{StaticResource LabelText}" Margin="0,0,0,8"/>
+
+                                        <!-- All-time option prominently placed -->
+                                        <Border Background="#FFF3CD" BorderBrush="#856404" BorderThickness="1" CornerRadius="4" Padding="12" Margin="0,0,0,12">
+                                            <CheckBox x:Name="chkAlertAlways" Content="Send alerts 24/7 (ignore schedule below)" FontWeight="SemiBold"/>
+                                        </Border>
+
+                                        <!-- Days of week -->
+                                        <StackPanel>
+                                            <TextBlock Text="Active Days:" FontSize="13" Margin="0,0,0,8"/>
+                                            <WrapPanel>
+                                                <CheckBox x:Name="chkMon" Content="Monday" MinWidth="90" Margin="0,0,8,8"/>
+                                                <CheckBox x:Name="chkTue" Content="Tuesday" MinWidth="90" Margin="0,0,8,8"/>
+                                                <CheckBox x:Name="chkWed" Content="Wednesday" MinWidth="90" Margin="0,0,8,8"/>
+                                                <CheckBox x:Name="chkThu" Content="Thursday" MinWidth="90" Margin="0,0,8,8"/>
+                                                <CheckBox x:Name="chkFri" Content="Friday" MinWidth="90" Margin="0,0,8,8"/>
+                                                <CheckBox x:Name="chkSat" Content="Saturday" MinWidth="90" Margin="0,0,8,8"/>
+                                                <CheckBox x:Name="chkSun" Content="Sunday" MinWidth="90" Margin="0,0,8,8"/>
+                                            </WrapPanel>
+                                        </StackPanel>
                                     </StackPanel>
 
-                                    <TextBlock Grid.Row="4" Grid.Column="0" Text="Alert threshold (minutes):" Style="{StaticResource LabelText}" Margin="0,12,0,0"/>
-                                    <TextBox x:Name="txtAlertThreshold" Grid.Row="4" Grid.Column="1" Text="15" Style="{StaticResource ModernTextBox}" Margin="0,12,0,0" Width="120"/>
+                                    <!-- Time Settings -->
+                                    <Grid Grid.Row="2" Margin="0,20,0,0">
+                                        <Grid.RowDefinitions>
+                                            <RowDefinition Height="Auto"/>
+                                            <RowDefinition Height="Auto"/>
+                                        </Grid.RowDefinitions>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="20"/>
+                                            <ColumnDefinition Width="*"/>
+                                        </Grid.ColumnDefinitions>
+
+                                        <!-- Work Hours -->
+                                        <Border Grid.Row="0" Grid.Column="0" Background="#F8F9FA" CornerRadius="4" Padding="16">
+                                            <StackPanel>
+                                                <TextBlock Text="Work Hours" FontWeight="SemiBold"/>
+                                                <StackPanel Orientation="Horizontal" Margin="0,8,0,0">
+                                                    <TextBox x:Name="txtWorkStart" Width="80" Text="08:00" Style="{StaticResource ModernTextBox}"/>
+                                                    <TextBlock Text="to" VerticalAlignment="Center" Margin="8,0"/>
+                                                    <TextBox x:Name="txtWorkEnd" Width="80" Text="17:00" Style="{StaticResource ModernTextBox}" Margin="8,0,0,0"/>
+                                                </StackPanel>
+                                                <TextBlock Text="Alerts active during these hours" FontSize="11" Foreground="#605E5C" Margin="0,8,0,0"/>
+                                            </StackPanel>
+                                        </Border>
+
+                                        <!-- Lunch Break -->
+                                        <Border Grid.Row="0" Grid.Column="2" Background="#F8F9FA" CornerRadius="4" Padding="16">
+                                            <StackPanel>
+                                                <TextBlock Text="Lunch Break" FontWeight="SemiBold"/>
+                                                <StackPanel Orientation="Horizontal" Margin="0,8,0,0">
+                                                    <TextBox x:Name="txtLunchStart" Width="80" Text="12:00" Style="{StaticResource ModernTextBox}"/>
+                                                    <TextBlock Text="to" VerticalAlignment="Center" Margin="8,0"/>
+                                                    <TextBox x:Name="txtLunchEnd" Width="80" Text="13:00" Style="{StaticResource ModernTextBox}" Margin="8,0,0,0"/>
+                                                </StackPanel>
+                                                <TextBlock Text="Alerts paused during lunch" FontSize="11" Foreground="#605E5C" Margin="0,8,0,0"/>
+                                            </StackPanel>
+                                        </Border>
+                                    </Grid>
+
+                                    <!-- Alert Threshold -->
+                                    <StackPanel Grid.Row="3" Margin="0,20,0,0">
+                                        <TextBlock Text="Alert Threshold" Style="{StaticResource LabelText}" Margin="0,0,0,8"/>
+                                        <Border Background="#F8F9FA" CornerRadius="4" Padding="16">
+                                            <StackPanel Orientation="Horizontal">
+                                                <TextBlock Text="Send download alerts if no activity for:" VerticalAlignment="Center"/>
+                                                <TextBox x:Name="txtAlertThreshold" Text="15" Style="{StaticResource ModernTextBox}" Width="80" Margin="12,0,0,0"/>
+                                                <TextBlock Text="minutes" VerticalAlignment="Center" Margin="8,0,0,0"/>
+                                            </StackPanel>
+                                        </Border>
+                                    </StackPanel>
+
+                                    <!-- Help Text -->
+                                    <Border Grid.Row="4" Background="#E7F3FF" BorderBrush="#007BFF" BorderThickness="1" CornerRadius="4" Padding="16" Margin="0,20,0,0">
+                                        <StackPanel>
+                                            <TextBlock Text="ℹ️ How it works:" FontWeight="SemiBold" FontSize="13"/>
+                                            <TextBlock Text="• Errors and warnings are sent immediately when they occur" FontSize="12"/>
+                                            <TextBlock Text="• Info summaries are collected and sent at the specified interval" FontSize="12"/>
+                                            <TextBlock Text="• All alerts respect the schedule unless '24/7' is enabled" FontSize="12"/>
+                                            <TextBlock Text="• Download alerts are triggered when no activity is detected for the threshold period" FontSize="12"/>
+                                        </StackPanel>
+                                    </Border>
                                 </Grid>
                             </StackPanel>
                         </Border>
+
                     </StackPanel>
                 </ScrollViewer>
             </Grid>

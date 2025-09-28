@@ -61,6 +61,16 @@ namespace FTP_Tool.Models
         // Recipients are stored as a single string separated by ';'
         public string EmailRecipients { get; set; } = string.Empty;
 
+        // --- What to send by email ---
+        // Send periodic info summaries (downloads, runtime)
+        public bool EmailOnInfo { get; set; } = false;
+        // Send emails when warnings occur
+        public bool EmailOnWarnings { get; set; } = true;
+        // Send emails when errors occur
+        public bool EmailOnErrors { get; set; } = true;
+        // Interval (minutes) for sending periodic info summary emails
+        public int EmailSummaryIntervalMinutes { get; set; } = 60;
+
         // Alert schedule
         // Comma separated list of enabled weekdays (e.g. "Mon,Tue,Wed") -- or empty for none
         public string AlertWeekdays { get; set; } = "Mon,Tue,Wed,Thu,Fri";

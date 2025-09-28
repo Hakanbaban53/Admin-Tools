@@ -226,6 +226,9 @@ namespace FTP_Tool
                 // give layout a chance to measure so ActualWidth is valid
                 FloatingSidebar.UpdateLayout();
 
+                // Ensure floating sidebar buttons reflect the currently active page on first show
+                try { SetFloatingSidebarActive(_settings?.LastPage ?? "Monitor"); } catch { }
+
                 var tt = FloatingSidebar.RenderTransform as System.Windows.Media.TranslateTransform;
                 if (tt == null)
                 {

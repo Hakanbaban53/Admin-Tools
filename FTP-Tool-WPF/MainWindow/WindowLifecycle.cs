@@ -131,6 +131,16 @@ namespace FTP_Tool
                 txtLunchEnd.Text = _settings.LunchEnd ?? "13:00";
                 txtAlertThreshold.Text = (_settings.AlertThresholdMinutes > 0 ? _settings.AlertThresholdMinutes : 15).ToString();
 
+                // New email options
+                try
+                {
+                    chkEmailInfo.IsChecked = _settings.EmailOnInfo;
+                    chkEmailWarnings.IsChecked = _settings.EmailOnWarnings;
+                    chkEmailErrors.IsChecked = _settings.EmailOnErrors;
+                    txtEmailSummaryInterval.Text = _settings.EmailSummaryIntervalMinutes.ToString();
+                }
+                catch { }
+
                 // Alert master switches
                 try
                 {
@@ -319,6 +329,27 @@ namespace FTP_Tool
                     chkMon.IsEnabled = chkTue.IsEnabled = chkWed.IsEnabled = chkThu.IsEnabled = chkFri.IsEnabled = chkSat.IsEnabled = chkSun.IsEnabled = enabled;
                     txtWorkStart.IsEnabled = txtWorkEnd.IsEnabled = txtLunchStart.IsEnabled = txtLunchEnd.IsEnabled = enabled;
                 };
+
+                // New: email option handlers
+                chkEmailInfo.Checked += (s, ev) => { _settings.EmailOnInfo = true; _ = _settings_service.SaveAsync(_settings); };
+                chkEmailInfo.Unchecked += (s, ev) => { _settings.EmailOnInfo = false; _ = _settings_service.SaveAsync(_settings); };
+                chkEmailWarnings.Checked += (s, ev) => { _settings.EmailOnWarnings = true; _ = _settings_service.SaveAsync(_settings); };
+                chkEmailWarnings.Unchecked += (s, ev) => { _settings.EmailOnWarnings = false; _ = _settings_service.SaveAsync(_settings); };
+                chkEmailErrors.Checked += (s, ev) => { _settings.EmailOnErrors = true; _ = _settings_service.SaveAsync(_settings); };
+                chkEmailErrors.Unchecked += (s, ev) => { _settings.EmailOnErrors = false; _ = _settings_service.SaveAsync(_settings); };
+
+                txtEmailSummaryInterval.LostFocus += (s, ev) =>
+                {
+                    if (int.TryParse(txtEmailSummaryInterval.Text, out var val))
+                    {
+                        _settings.EmailSummaryIntervalMinutes = Math.Max(1, val);
+                        _ = _settings_service.SaveAsync(_settings);
+                    }
+                    else
+                    {
+                        txtEmailSummaryInterval.Text = _settings.EmailSummaryIntervalMinutes.ToString();
+                    }
+                };
             }
             catch { }
 
@@ -457,6 +488,12 @@ namespace FTP_Tool
                 // persist alert settings
                 try { _settings.AlertsEnabled = chkAlertsEnabled.IsChecked == true; } catch { }
                 try { _settings.AlertAlways = chkAlertAlways.IsChecked == true; } catch { }
+
+                // persist new email options
+                try { _settings.EmailOnInfo = chkEmailInfo.IsChecked == true; } catch { }
+                try { _settings.EmailOnWarnings = chkEmailWarnings.IsChecked == true; } catch { }
+                try { _settings.EmailOnErrors = chkEmailErrors.IsChecked == true; } catch { }
+                try { _settings.EmailSummaryIntervalMinutes = int.TryParse(txtEmailSummaryInterval.Text, out var iv) ? Math.Max(1, iv) : _settings.EmailSummaryIntervalMinutes; } catch { }
 
                 if (_settings_service != null) await _settings_service.SaveAsync(_settings);
 
