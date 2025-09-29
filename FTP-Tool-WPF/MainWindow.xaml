@@ -333,191 +333,228 @@
                 </Grid.RowDefinitions>
 
                 <!-- Page Header -->
-                <StackPanel Grid.Row="0" Margin="0,0,0,20" HorizontalAlignment="Center" MaxWidth="800">
+                <StackPanel Grid.Row="0" Margin="0,0,0,20" HorizontalAlignment="Center" MaxWidth="900">
                     <TextBlock Text="FTP Monitor" Style="{StaticResource PageTitle}" TextAlignment="Center"/>
-                    <TextBlock Text="Monitor and download files from Linux FTP server to Windows" Style="{StaticResource PageSubtitle}" TextAlignment="Center"/>
+                    <TextBlock Text="Monitor and download files from FTP server automatically" 
+                   Style="{StaticResource PageSubtitle}" TextAlignment="Center"/>
                 </StackPanel>
 
-                <!-- Monitor Content -->
-                <Grid Grid.Row="1">
+                <!-- Monitor Content - Responsive Grid -->
+                <Grid Grid.Row="1" x:Name="MainContentGrid">
                     <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="450" MinWidth="400"/>
+                        <ColumnDefinition Width="1*" MinWidth="350" MaxWidth="500"/>
                         <ColumnDefinition Width="Auto"/>
-                        <ColumnDefinition Width="*" MinWidth="400"/>
+                        <ColumnDefinition Width="1.5*" MinWidth="400"/>
                     </Grid.ColumnDefinitions>
 
                     <!-- Left Panel: Connection + Settings -->
-                    <ScrollViewer Grid.Column="0" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                    <ScrollViewer Grid.Column="0" VerticalScrollBarVisibility="Auto" 
+                      HorizontalScrollBarVisibility="Disabled" Padding="0,0,8,0">
                         <StackPanel>
                             <!-- Connection Settings -->
                             <Border Style="{StaticResource ModernCard}">
                                 <StackPanel>
-                                    <TextBlock Text="🌐 FTP Server Connection" Style="{StaticResource HeaderText}"/>
+                                    <TextBlock Text="Server Connection" Style="{StaticResource HeaderText}" 
+                                   FontSize="16" FontWeight="SemiBold"/>
 
-                                    <Grid>
-                                        <Grid.RowDefinitions>
-                                            <RowDefinition Height="Auto"/>
-                                            <RowDefinition Height="Auto"/>
-                                            <RowDefinition Height="Auto"/>
-                                            <RowDefinition Height="Auto"/>
-                                            <RowDefinition Height="Auto"/>
-                                        </Grid.RowDefinitions>
-                                        <Grid.ColumnDefinitions>
-                                            <ColumnDefinition Width="Auto" MinWidth="90"/>
-                                            <ColumnDefinition Width="*"/>
-                                            <ColumnDefinition Width="Auto" MinWidth="50"/>
-                                            <ColumnDefinition Width="100"/>
-                                        </Grid.ColumnDefinitions>
+                                    <StackPanel Margin="0,12,0,0">
+                                        <!-- Server & Port Row -->
+                                        <Grid Margin="0,0,0,12">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*"/>
+                                                <ColumnDefinition Width="8"/>
+                                                <ColumnDefinition Width="100"/>
+                                            </Grid.ColumnDefinitions>
 
-                                        <!-- Server & Port -->
-                                        <TextBlock Grid.Row="0" Grid.Column="0" Text="Server:" Style="{StaticResource LabelText}" Margin="0,0,10,0"/>
-                                        <TextBox x:Name="txtHost" Grid.Row="0" Grid.Column="1" Style="{StaticResource ModernTextBox}" Margin="0,0,10,0"/>
-                                        <TextBlock Grid.Row="0" Grid.Column="2" Text="Port:" Style="{StaticResource LabelText}" Margin="0,0,10,0"/>
-                                        <TextBox x:Name="txtPort" Grid.Row="0" Grid.Column="3" Text="21" Style="{StaticResource ModernTextBox}"/>
+                                            <StackPanel Grid.Column="0">
+                                                <TextBlock Text="Server Address" Style="{StaticResource LabelText}" Margin="0,0,0,4"/>
+                                                <TextBox x:Name="txtHost" Style="{StaticResource ModernTextBox}" 
+                                             ToolTip="FTP server hostname or IP address"/>
+                                            </StackPanel>
+
+                                            <StackPanel Grid.Column="2">
+                                                <TextBlock Text="Port" Style="{StaticResource LabelText}" Margin="0,0,0,4"/>
+                                                <TextBox x:Name="txtPort" Text="21" Style="{StaticResource ModernTextBox}"
+                                             ToolTip="FTP port (default: 21)"/>
+                                            </StackPanel>
+                                        </Grid>
 
                                         <!-- Username -->
-                                        <TextBlock Grid.Row="1" Grid.Column="0" Text="Username:" Style="{StaticResource LabelText}" Margin="0,12,10,0"/>
-                                        <TextBox x:Name="txtUsername" Grid.Row="1" Grid.Column="1" Grid.ColumnSpan="3" Style="{StaticResource ModernTextBox}" Margin="0,12,0,0"/>
+                                        <StackPanel Margin="0,0,0,12">
+                                            <TextBlock Text="Username" Style="{StaticResource LabelText}" Margin="0,0,0,4"/>
+                                            <TextBox x:Name="txtUsername" Style="{StaticResource ModernTextBox}"/>
+                                        </StackPanel>
 
                                         <!-- Password -->
-                                        <TextBlock Grid.Row="2" Grid.Column="0" Text="Password:" Style="{StaticResource LabelText}" Margin="0,12,10,0"/>
-                                        <PasswordBox x:Name="txtPassword" Grid.Row="2" Grid.Column="1" Grid.ColumnSpan="3" Style="{StaticResource ModernPasswordBox}" Margin="0,12,0,0"/>
+                                        <StackPanel Margin="0,0,0,12">
+                                            <TextBlock Text="Password" Style="{StaticResource LabelText}" Margin="0,0,0,4"/>
+                                            <PasswordBox x:Name="txtPassword" Style="{StaticResource ModernPasswordBox}"/>
+                                        </StackPanel>
 
-                                        <!-- Remote Folder -->
-                                        <TextBlock Grid.Row="3" Grid.Column="0" Text="Remote Path:" Style="{StaticResource LabelText}" Margin="0,12,10,0"/>
-                                        <TextBox x:Name="txtRemoteFolder" Grid.Row="3" Grid.Column="1" Grid.ColumnSpan="2" Text="/" Style="{StaticResource ModernTextBox}" Margin="0,12,10,0"/>
-                                        <Button x:Name="btnTestConnection" Grid.Row="3" Grid.Column="3" Click="BtnTestConnection_Click" Style="{StaticResource ModernButton}" Margin="0,12,0,0">
-                                            <StackPanel Orientation="Horizontal">
-                                                <TextBlock Text="🔗" Margin="0,0,6,0"/>
-                                                <TextBlock Text="Test"/>
+                                        <!-- Remote Folder & Test Button -->
+                                        <Grid Margin="0,0,0,0">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*"/>
+                                                <ColumnDefinition Width="8"/>
+                                                <ColumnDefinition Width="Auto"/>
+                                            </Grid.ColumnDefinitions>
+
+                                            <StackPanel Grid.Column="0">
+                                                <TextBlock Text="Remote Path" Style="{StaticResource LabelText}" Margin="0,0,0,4"/>
+                                                <TextBox x:Name="txtRemoteFolder" Text="/" Style="{StaticResource ModernTextBox}"
+                                             ToolTip="Remote folder path (e.g., /incoming)"/>
                                             </StackPanel>
-                                        </Button>
-                                    </Grid>
+
+                                            <Button x:Name="btnTestConnection" Grid.Column="2" Click="BtnTestConnection_Click" 
+                                        Style="{StaticResource SecondaryButton}" Padding="12,8" Margin="0,20,0,0"
+                                        ToolTip="Test connection to FTP server">
+                                                <StackPanel Orientation="Horizontal">
+                                                    <TextBlock Text="🔗" Margin="0,0,6,0"/>
+                                                    <TextBlock Text="Test"/>
+                                                </StackPanel>
+                                            </Button>
+                                        </Grid>
+                                    </StackPanel>
                                 </StackPanel>
                             </Border>
 
                             <!-- Download Settings -->
                             <Border Style="{StaticResource ModernCard}">
                                 <StackPanel>
-                                    <TextBlock Text="📁 Download Settings" Style="{StaticResource HeaderText}"/>
+                                    <TextBlock Text="Download Settings" Style="{StaticResource HeaderText}" 
+                                   FontSize="16" FontWeight="SemiBold"/>
 
-                                    <Grid>
-                                        <Grid.RowDefinitions>
-                                            <RowDefinition Height="Auto"/>
-                                            <RowDefinition Height="Auto"/>
-                                            <RowDefinition Height="Auto"/>
-                                        </Grid.RowDefinitions>
-                                        <Grid.ColumnDefinitions>
-                                            <ColumnDefinition Width="Auto" MinWidth="90"/>
-                                            <ColumnDefinition Width="*"/>
-                                            <ColumnDefinition Width="Auto"/>
-                                        </Grid.ColumnDefinitions>
-
+                                    <StackPanel Margin="0,12,0,0">
                                         <!-- Local Folder -->
-                                        <TextBlock Grid.Row="0" Grid.Column="0" Text="Download to:" Style="{StaticResource LabelText}" Margin="0,0,10,0"/>
-                                        <TextBox x:Name="txtLocalFolder" Grid.Row="0" Grid.Column="1" Style="{StaticResource ModernTextBox}" Margin="0,0,10,0"/>
-                                        <Button x:Name="btnBrowse" Grid.Row="0" Grid.Column="2" Click="BtnBrowse_Click" Style="{StaticResource SecondaryButton}">
-                                            <StackPanel Orientation="Horizontal">
-                                                <TextBlock Text="📂" Margin="0,0,6,0"/>
-                                                <TextBlock Text="Browse"/>
-                                            </StackPanel>
-                                        </Button>
+                                        <StackPanel Margin="0,0,0,12">
+                                            <TextBlock Text="Local Download Folder" Style="{StaticResource LabelText}" Margin="0,0,0,4"/>
+                                            <Grid>
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="*"/>
+                                                    <ColumnDefinition Width="8"/>
+                                                    <ColumnDefinition Width="Auto"/>
+                                                </Grid.ColumnDefinitions>
+
+                                                <TextBox x:Name="txtLocalFolder" Grid.Column="0" Style="{StaticResource ModernTextBox}"/>
+                                                <Button x:Name="btnBrowse" Grid.Column="2" Click="BtnBrowse_Click" 
+                                            Style="{StaticResource SecondaryButton}" Padding="10,8" ToolTip="Browse Download Folder">
+                                                    <TextBlock Text="📂"/>
+                                                </Button>
+                                            </Grid>
+                                        </StackPanel>
 
                                         <!-- Check Interval -->
-                                        <TextBlock Grid.Row="1" Grid.Column="0" Text="Check every:" Style="{StaticResource LabelText}" Margin="0,12,10,0"/>
-                                        <StackPanel Grid.Row="1" Grid.Column="1" Grid.ColumnSpan="2" Orientation="Horizontal" Margin="0,12,0,0">
-                                            <TextBox x:Name="txtInterval" Width="80" Text="30" Style="{StaticResource ModernTextBox}"/>
-                                            <TextBlock Text="seconds" Style="{StaticResource LabelText}" Margin="10,0,0,0"/>
+                                        <StackPanel Margin="0,0,0,12">
+                                            <TextBlock Text="Check Interval" Style="{StaticResource LabelText}" Margin="0,0,0,4"/>
+                                            <StackPanel Orientation="Horizontal">
+                                                <TextBox x:Name="txtInterval" Width="80" Text="30" 
+                                             Style="{StaticResource ModernTextBox}"
+                                             ToolTip="How often to check for new files (in seconds)"/>
+                                                <TextBlock Text="seconds" Style="{StaticResource LabelText}" 
+                                               Margin="10,0,0,0" VerticalAlignment="Center"/>
+                                            </StackPanel>
                                         </StackPanel>
 
                                         <!-- Delete After Download -->
-                                        <CheckBox x:Name="chkDeleteAfterDownload" Grid.Row="2" Grid.ColumnSpan="3" 
-                                                  Content="Delete files from server after successful download" 
-                                                  FontSize="14" Margin="0,16,0,0"/>
-                                    </Grid>
+                                        <CheckBox x:Name="chkDeleteAfterDownload" 
+                                      Content="Delete files after download" 
+                                      FontSize="14" Margin="0,4,0,0"
+                                      ToolTip="Remove files from server after successful download"/>
+                                    </StackPanel>
                                 </StackPanel>
                             </Border>
 
                             <!-- Control Buttons -->
                             <Border Style="{StaticResource ModernCard}">
                                 <StackPanel>
-                                    <TextBlock Text="⚙️ Controls" Style="{StaticResource HeaderText}"/>
+                                    <TextBlock Text="Controls" Style="{StaticResource HeaderText}" 
+                                   FontSize="16" FontWeight="SemiBold"/>
 
-                                    <WrapPanel Orientation="Horizontal">
-                                        <Button x:Name="btnStart" Click="BtnStart_Click" Style="{StaticResource ModernButton}">
+                                    <!-- Primary Actions -->
+                                    <UniformGrid Columns="2" Rows="1" Margin="0,12,0,8">
+                                        <Button x:Name="btnStart" Click="BtnStart_Click" 
+                                    Style="{StaticResource ModernButton}" Margin="0,0,4,0">
                                             <StackPanel Orientation="Horizontal">
-                                                <TextBlock Text="▶️" Margin="0,0,8,0"/>
-                                                <TextBlock Text="Start Monitoring"/>
+                                                <TextBlock Text="▶" Margin="0,0,6,0" FontSize="14"/>
+                                                <TextBlock Text="Start Monitor"/>
                                             </StackPanel>
                                         </Button>
 
-                                        <Button x:Name="btnStop" Click="BtnStop_Click" IsEnabled="False" Style="{StaticResource DangerButton}">
+                                        <Button x:Name="btnStop" Click="BtnStop_Click" IsEnabled="False" 
+                                    Style="{StaticResource DangerButton}" Margin="4,0,0,0">
                                             <StackPanel Orientation="Horizontal">
-                                                <TextBlock Text="⏹️" Margin="0,0,8,0"/>
+                                                <TextBlock Text="⏹" Margin="0,0,6,0" FontSize="14"/>
                                                 <TextBlock Text="Stop"/>
                                             </StackPanel>
                                         </Button>
+                                    </UniformGrid>
 
-                                        <Button x:Name="btnCheckNow" Click="BtnCheckNow_Click" Style="{StaticResource SecondaryButton}">
-                                            <StackPanel Orientation="Horizontal">
-                                                <TextBlock Text="🔄" Margin="0,0,8,0"/>
-                                                <TextBlock Text="Check Now"/>
+                                    <!-- Secondary Actions -->
+                                    <UniformGrid Columns="3" Rows="1">
+                                        <Button x:Name="btnCheckNow" Click="BtnCheckNow_Click" 
+                                    Style="{StaticResource SecondaryButton}" Margin="0,0,4,0" Padding="8,8" ToolTip="Check Now">
+                                            <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+                                                <TextBlock Text="🔄" FontSize="14"/>
                                             </StackPanel>
                                         </Button>
 
-                                        <Button x:Name="btnClearLog" Click="BtnClearLog_Click" Style="{StaticResource SecondaryButton}">
-                                            <StackPanel Orientation="Horizontal">
-                                                <TextBlock Text="🗑️" Margin="0,0,8,0"/>
-                                                <TextBlock Text="Clear Log"/>
+                                        <Button x:Name="btnClearLog" Click="BtnClearLog_Click" 
+                                    Style="{StaticResource SecondaryButton}" Margin="2,0" Padding="8,8" ToolTip="Clear Logs">
+                                            <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+                                                <TextBlock Text="🗑️" FontSize="14"/>
                                             </StackPanel>
                                         </Button>
 
-                                        <Button x:Name="btnOpenLogFolder" Click="BtnOpenLogFolder_Click" Style="{StaticResource SecondaryButton}">
-                                            <StackPanel Orientation="Horizontal">
-                                                <TextBlock Text="📂" Margin="0,0,8,0"/>
-                                                <TextBlock Text="Open Logs"/>
+                                        <Button x:Name="btnOpenLogFolder" Click="BtnOpenLogFolder_Click" 
+                                    Style="{StaticResource SecondaryButton}" Margin="4,0,0,0" Padding="8,8" ToolTip="Open Logs Folder">
+                                            <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+                                                <TextBlock Text="📂" FontSize="14"/>
                                             </StackPanel>
                                         </Button>
-                                    </WrapPanel>
+                                    </UniformGrid>
 
-                                    <!-- Status Information -->
-                                    <Grid Margin="0,16,0,0">
-                                        <Grid.RowDefinitions>
-                                            <RowDefinition Height="Auto"/>
-                                        </Grid.RowDefinitions>
-                                        <Grid.ColumnDefinitions>
-                                            <ColumnDefinition Width="*"/>
-                                            <ColumnDefinition Width="*"/>
-                                        </Grid.ColumnDefinitions>
+                                    <!-- Status Bar -->
+                                    <Border Background="#F5F5F5" CornerRadius="6" Padding="12" Margin="0,12,0,0">
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*"/>
+                                                <ColumnDefinition Width="Auto"/>
+                                            </Grid.ColumnDefinitions>
 
-                                        <StackPanel Grid.Row="0" Grid.Column="0">
-                                            <TextBlock x:Name="lblStatus" Text="Ready to start monitoring" Style="{StaticResource StatusText}" FontWeight="SemiBold"/>
-                                        </StackPanel>
+                                            <StackPanel Grid.Column="0">
+                                                <TextBlock x:Name="lblStatus" Text="Ready" 
+                                               Style="{StaticResource StatusText}" 
+                                               FontWeight="SemiBold" FontSize="13"/>
+                                            </StackPanel>
 
-                                        <StackPanel Grid.Row="0" Grid.Column="1" HorizontalAlignment="Right">
-                                            <TextBlock x:Name="lblDownloaded" Text="Downloaded: 0 files" Foreground="#107C10" FontWeight="SemiBold" FontSize="14"/>
-                                        </StackPanel>
-                                    </Grid>
+                                            <StackPanel Grid.Column="1">
+                                                <TextBlock x:Name="lblDownloaded" Text="0 files" 
+                                               Foreground="#107C10" FontWeight="SemiBold" FontSize="13"/>
+                                            </StackPanel>
+                                        </Grid>
+                                    </Border>
                                 </StackPanel>
                             </Border>
                         </StackPanel>
                     </ScrollViewer>
 
                     <!-- Splitter -->
-                    <GridSplitter Grid.Column="1" Width="8" HorizontalAlignment="Center" VerticalAlignment="Stretch" 
-                                  Background="Transparent" ShowsPreview="True" Margin="8,0"/>
+                    <GridSplitter Grid.Column="1" Width="8" HorizontalAlignment="Center" 
+                      VerticalAlignment="Stretch" Background="Transparent" 
+                      ShowsPreview="True" Margin="4,0"/>
 
                     <!-- Right Panel: Status & Activity Log -->
-                    <Grid Grid.Column="2">
+                    <Grid Grid.Column="2" Margin="8,0,0,0">
                         <Grid.RowDefinitions>
                             <RowDefinition Height="Auto"/>
                             <RowDefinition Height="*"/>
                         </Grid.RowDefinitions>
 
-                        <!-- Status Overview -->
-                        <Border Grid.Row="0" Style="{StaticResource ModernCard}" MinHeight="140">
+                        <!-- Status Overview - Compact Design -->
+                        <Border Grid.Row="0" Style="{StaticResource ModernCard}" Padding="16,14">
                             <StackPanel>
-                                <TextBlock Text="📊 Status Overview" Style="{StaticResource HeaderText}"/>
+                                <TextBlock Text="Status Overview" Style="{StaticResource HeaderText}" 
+                               FontSize="16" FontWeight="SemiBold" Margin="0,0,0,10"/>
 
                                 <Grid>
                                     <Grid.RowDefinitions>
@@ -526,54 +563,78 @@
                                         <RowDefinition Height="Auto"/>
                                     </Grid.RowDefinitions>
                                     <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="Auto"/>
+                                        <ColumnDefinition Width="Auto" MinWidth="100"/>
                                         <ColumnDefinition Width="*"/>
                                     </Grid.ColumnDefinitions>
 
-                                    <!-- Current Status -->
-                                    <StackPanel Grid.Row="0" Grid.Column="0" Grid.ColumnSpan="2" Orientation="Horizontal" Margin="0,0,0,8">
-                                        <Ellipse x:Name="ellipseStatus" Width="14" Height="14" Fill="#6BB6FF" VerticalAlignment="Center" Margin="0,0,12,0"/>
-                                        <TextBlock Text="Status:" FontWeight="SemiBold" Width="80" Style="{StaticResource LabelText}"/>
-                                        <TextBlock x:Name="txtStatusText" Text="Idle" Style="{StaticResource StatusText}" FontWeight="SemiBold"/>
+                                    <!-- Current Status with Indicator -->
+                                    <StackPanel Grid.Row="0" Grid.Column="0" Orientation="Horizontal" Margin="0,0,0,8">
+                                        <Ellipse x:Name="ellipseStatus" Width="12" Height="12" 
+                                     Fill="#6BB6FF" VerticalAlignment="Center" Margin="0,0,10,0"/>
+                                        <TextBlock Text="Status:" FontWeight="SemiBold" 
+                                       Style="{StaticResource LabelText}"/>
                                     </StackPanel>
+                                    <TextBlock Grid.Row="0" Grid.Column="1" x:Name="txtStatusText" 
+                                   Text="Idle" Style="{StaticResource StatusText}" 
+                                   FontWeight="SemiBold" Margin="0,0,0,8" VerticalAlignment="Center"/>
 
                                     <!-- Last Check -->
-                                    <TextBlock Grid.Row="1" Grid.Column="0" Text="Last check:" FontWeight="SemiBold" Width="80" Style="{StaticResource LabelText}" Margin="0,0,12,8"/>
-                                    <TextBlock Grid.Row="1" Grid.Column="1" x:Name="txtLastCheck" Text="-" Style="{StaticResource StatusText}" Margin="0,0,0,8"/>
+                                    <TextBlock Grid.Row="1" Grid.Column="0" Text="Last check:" 
+                                   FontWeight="SemiBold" Style="{StaticResource LabelText}" 
+                                   Margin="22,0,0,8"/>
+                                    <TextBlock Grid.Row="1" Grid.Column="1" x:Name="txtLastCheck" 
+                                   Text="-" Style="{StaticResource StatusText}" 
+                                   Margin="0,0,0,8"/>
 
                                     <!-- Last Error -->
-                                    <TextBlock Grid.Row="2" Grid.Column="0" Text="Last error:" FontWeight="SemiBold" Width="80" Style="{StaticResource LabelText}" Margin="0,0,12,0" VerticalAlignment="Top"/>
-                                    <TextBlock Grid.Row="2" Grid.Column="1" x:Name="txtLastError" Text="-" Foreground="#D13438" TextWrapping="Wrap" Style="{StaticResource StatusText}"/>
+                                    <TextBlock Grid.Row="2" Grid.Column="0" Text="Last error:" 
+                                   FontWeight="SemiBold" Style="{StaticResource LabelText}" 
+                                   Margin="22,0,0,0" VerticalAlignment="Top"/>
+                                    <TextBlock Grid.Row="2" Grid.Column="1" x:Name="txtLastError" 
+                                   Text="-" Foreground="#D13438" TextWrapping="Wrap" 
+                                   Style="{StaticResource StatusText}" MaxHeight="60"
+                                   ToolTip="{Binding Text, RelativeSource={RelativeSource Self}}"/>
                                 </Grid>
                             </StackPanel>
                         </Border>
 
                         <!-- Activity Log -->
-                        <Border Grid.Row="1" Style="{StaticResource ModernCard}" Margin="0">
+                        <Border Grid.Row="1" Style="{StaticResource ModernCard}" Margin="0,8,0,0">
                             <DockPanel>
-                                <TextBlock DockPanel.Dock="Top" Text="📝 Activity Log" Style="{StaticResource HeaderText}"/>
-                                <Grid>
-                                    <Grid.RowDefinitions>
-                                        <RowDefinition Height="*"/>
-                                        <RowDefinition Height="Auto"/>
-                                    </Grid.RowDefinitions>
+                                <Grid DockPanel.Dock="Top" Margin="0,0,0,8">
+                                    <TextBlock Text="Activity Log" Style="{StaticResource HeaderText}" 
+                                   FontSize="16" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                                    <Button x:Name="btnJumpToLatest" HorizontalAlignment="Right" 
+                                Visibility="Collapsed" Click="BtnJumpToLatest_Click" 
+                                Style="{StaticResource SecondaryButton}" Padding="8,4"
+                                FontSize="12">
+                                        <StackPanel Orientation="Horizontal">
+                                            <TextBlock Text="↓" Margin="0,0,4,0"/>
+                                            <TextBlock Text="Latest"/>
+                                        </StackPanel>
+                                    </Button>
+                                </Grid>
 
-                                    <ListBox x:Name="lstLog" Grid.Row="0" ItemsSource="{Binding RelativeSource={RelativeSource AncestorType=Window}, Path=_displayedLogEntriesPublic}"
-                                             ItemTemplate="{StaticResource LogEntryTemplate}" 
-                                             ScrollViewer.VerticalScrollBarVisibility="Auto"
-                                             ScrollViewer.HorizontalScrollBarVisibility="Auto"
-                                             VirtualizingPanel.IsVirtualizing="True"
-                                             VirtualizingPanel.VirtualizationMode="Recycling"
-                                             ScrollViewer.CanContentScroll="True">
+                                <!-- Log ListBox with better styling -->
+                                <Border BorderBrush="#E0E0E0" BorderThickness="1" CornerRadius="4" 
+                            Background="#FAFAFA">
+                                    <ListBox x:Name="lstLog" 
+                                 ItemsSource="{Binding RelativeSource={RelativeSource AncestorType=Window}, Path=DisplayedLogEntriesPublic}"
+                                 ItemTemplate="{StaticResource LogEntryTemplate}" 
+                                 ScrollViewer.VerticalScrollBarVisibility="Auto"
+                                 ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                                 VirtualizingPanel.IsVirtualizing="True"
+                                 VirtualizingPanel.VirtualizationMode="Recycling"
+                                 ScrollViewer.CanContentScroll="True"
+                                 Background="Transparent"
+                                 BorderThickness="0">
                                         <ListBox.ItemsPanel>
                                             <ItemsPanelTemplate>
                                                 <VirtualizingStackPanel />
                                             </ItemsPanelTemplate>
                                         </ListBox.ItemsPanel>
                                     </ListBox>
-
-                                    <Button x:Name="btnJumpToLatest" Grid.Row="1" Visibility="Collapsed" HorizontalAlignment="Right" Margin="0,8,0,0" Click="BtnJumpToLatest_Click" Style="{StaticResource SecondaryButton}">Jump to latest</Button>
-                                </Grid>
+                                </Border>
                             </DockPanel>
                         </Border>
                     </Grid>
@@ -988,10 +1049,15 @@
                                     <StackPanel Grid.Row="3" Margin="0,20,0,0">
                                         <TextBlock Text="Alert Threshold" Style="{StaticResource LabelText}" Margin="0,0,0,8"/>
                                         <Border Background="#F8F9FA" CornerRadius="4" Padding="16">
-                                            <StackPanel Orientation="Horizontal">
-                                                <TextBlock Text="Send download alerts if no activity for:" VerticalAlignment="Center"/>
-                                                <TextBox x:Name="txtAlertThreshold" Text="15" Style="{StaticResource ModernTextBox}" Width="80" Margin="12,0,0,0"/>
-                                                <TextBlock Text="minutes" VerticalAlignment="Center" Margin="8,0,0,0"/>
+                                            <StackPanel Orientation="Vertical">
+                                                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                                    <TextBlock Text="Send download alerts if no activity for:" VerticalAlignment="Center"/>
+                                                    <TextBox x:Name="txtAlertThreshold" Text="15" Style="{StaticResource ModernTextBox}" Width="80" Margin="12,0,0,0"/>
+                                                    <TextBlock Text="minutes" VerticalAlignment="Center" Margin="8,0,0,0"/>
+                                                </StackPanel>
+
+                                                <!-- New checkbox to control whether to send download/no-activity emails -->
+                                                <CheckBox x:Name="chkSendDownloadAlerts" Content="Send download/no-activity alerts" Margin="0,12,0,0"/>
                                             </StackPanel>
                                         </Border>
                                     </StackPanel>

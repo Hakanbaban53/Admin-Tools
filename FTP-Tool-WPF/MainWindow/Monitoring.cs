@@ -66,7 +66,7 @@ namespace FTP_Tool
         {
             bool anyDownloaded = false;
             var sw = Stopwatch.StartNew();
-            int found = 0, downloaded = 0, skipped = 0, errors = 0;
+            int totalEntries = 0, fileCount = 0, dirCount = 0, downloaded = 0, skipped = 0, errors = 0;
 
             string host = Dispatcher.Invoke(() => txtHost.Text.Trim());
             string portText = Dispatcher.Invoke(() => txtPort.Text);
@@ -84,36 +84,55 @@ namespace FTP_Tool
                 var localFolder = localFolderText;
                 var deleteAfter = Dispatcher.Invoke(() => chkDeleteAfterDownload.IsChecked == true);
 
-                var files = await _ftpService.ListFilesAsync(host2, port, creds, remoteFolder, token);
-                found = files.Length;
-                _currentFilesInRemote = found;
-                Log($"{source} run: found {found} entries", LogLevel.Info);
-                if (files.Length == 0)
+                // Use the new ListEntriesAsync to get file/directory information
+                var entries = await _ftpService.ListEntriesAsync(host2, port, creds, remoteFolder, token);
+                totalEntries = entries.Length;
+
+                // Count files and directories
+                foreach (var (name, isDirectory) in entries)
                 {
-                    Log("No files found.", LogLevel.Info);
+                    if (isDirectory)
+                        dirCount++;
+                    else
+                        fileCount++;
+                }
+
+                _currentFilesInRemote = fileCount; // Only count actual files
+
+                Log($"{source} run: found {totalEntries} entries ({fileCount} files, {dirCount} directories)", LogLevel.Info);
+
+                if (fileCount == 0)
+                {
+                    if (dirCount > 0)
+                        Log($"No files to download (found {dirCount} directories).", LogLevel.Info);
+                    else
+                        Log("No files found.", LogLevel.Info);
+
                     if (errors > 0) _errorCount += errors;
                     UpdateSidebarStats();
                     return false;
                 }
 
-                foreach (var file in files)
+                foreach (var (name, isDirectory) in entries)
                 {
                     if (token.IsCancellationRequested) break;
 
-                    if (string.IsNullOrWhiteSpace(file) || file == "." || file == "..") continue;
-                    if (!file.Contains("."))
+                    if (string.IsNullOrWhiteSpace(name) || name == "." || name == "..") continue;
+
+                    if (isDirectory)
                     {
-                        Log($"Skipping (looks like dir): {file}", LogLevel.Info);
+                        Log($"Skipping directory: {name}", LogLevel.Debug);
                         continue;
                     }
 
-                    var dl = await _ftpService.DownloadFileAsync(host2, port, creds, remoteFolder, file, localFolder, deleteAfter, token);
-                    if (dl.Success)
+                    var (Success, LocalPath, RemotePath, Deleted, ErrorMessage, Skipped) = await _ftpService.DownloadFileAsync(host2, port, creds, remoteFolder, name, localFolder, deleteAfter, token);
+
+                    if (Success)
                     {
-                        if (dl.Skipped)
+                        if (Skipped)
                         {
                             skipped++;
-                            Log($"Already exists, skipping: {file}", LogLevel.Debug);
+                            Log($"Already exists, skipping: {name}", LogLevel.Debug);
                         }
                         else
                         {
@@ -123,23 +142,23 @@ namespace FTP_Tool
                             {
                                 _downloadedCount++;
                                 UpdateDownloadedLabel();
-                                Log($"Downloaded: {file} -> {dl.LocalPath}", LogLevel.Info);
+                                Log($"Downloaded: {name} -> {LocalPath}", LogLevel.Info);
                                 txtLastCheck.Text = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
                             });
 
-                            if (dl.Deleted)
+                            if (Deleted)
                             {
-                                Log($"Deleted remote file: {dl.RemotePath}", LogLevel.Info);
+                                Log($"Deleted remote file: {RemotePath}", LogLevel.Info);
                             }
                         }
                     }
                     else
                     {
                         errors++;
-                        if (!string.IsNullOrEmpty(dl.ErrorMessage))
+                        if (!string.IsNullOrEmpty(ErrorMessage))
                         {
-                            Log($"DownloadFile error ({file}): {dl.ErrorMessage}", LogLevel.Warning);
-                            Dispatcher.Invoke(() => txtLastError.Text = dl.ErrorMessage);
+                            Log($"DownloadFile error ({name}): {ErrorMessage}", LogLevel.Warning);
+                            Dispatcher.Invoke(() => txtLastError.Text = ErrorMessage);
                         }
                     }
                 }
@@ -147,7 +166,7 @@ namespace FTP_Tool
                 _totalFilesMonitored += downloaded;
                 if (errors > 0) _errorCount += errors;
 
-                if (downloaded > 0 || found > 0)
+                if (downloaded > 0 || fileCount > 0)
                 {
                     _lastSuccessfulCheck = DateTime.Now;
                 }
@@ -166,7 +185,22 @@ namespace FTP_Tool
             {
                 sw.Stop();
                 var duration = sw.Elapsed.ToString(@"mm\:ss");
-                Log($"{source} run finished: found={found} downloaded={downloaded} skipped={skipped} errors={errors} duration={duration}", LogLevel.Info);
+
+                // Build a clear summary message
+                var summary = $"{source} run finished: total={totalEntries}";
+                if (dirCount > 0)
+                    summary += $" (files={fileCount}, dirs={dirCount})";
+                else
+                    summary += $" files={fileCount}";
+
+                summary += $", downloaded={downloaded}, skipped={skipped}";
+
+                if (errors > 0)
+                    summary += $", errors={errors}";
+
+                summary += $", duration={duration}";
+
+                Log(summary, LogLevel.Info);
 
                 UpdateSidebarStats();
             }

@@ -15,7 +15,7 @@ namespace FTP_Tool
         // pending log entries produced by background threads
         private readonly ConcurrentQueue<LogEntry> _pendingLogEntries = new();
         // displayed entries bound to ListBox (virtualized)
-        private readonly ObservableCollection<LogEntry> _displayedLogEntries = new();
+        private readonly ObservableCollection<LogEntry> _displayedLogEntries = [];
         private DispatcherTimer? _logFlushTimer;
         private int _newLogCount = 0;
         private bool _isUserAtBottom = true; // whether we should auto-scroll when new lines arrive
@@ -126,13 +126,12 @@ namespace FTP_Tool
                     {
                         if (_displayedLogEntries.Count > 0)
                         {
-                            var last = _displayedLogEntries[_displayedLogEntries.Count - 1];
+                            var last = _displayedLogEntries[^1];
                             lstLog.ScrollIntoView(last);
                         }
 
                         // hide jump button if visible
-                        var btn = FindName("btnJumpToLatest") as System.Windows.Controls.Button;
-                        if (btn != null) btn.Visibility = Visibility.Collapsed;
+                        if (FindName("btnJumpToLatest") is System.Windows.Controls.Button btn) btn.Visibility = Visibility.Collapsed;
                         _newLogCount = 0;
                     }
                     catch { }
@@ -143,8 +142,7 @@ namespace FTP_Tool
                     _newLogCount += toAdd.Count;
                     try
                     {
-                        var btn = FindName("btnJumpToLatest") as System.Windows.Controls.Button;
-                        if (btn != null)
+                        if (FindName("btnJumpToLatest") is System.Windows.Controls.Button btn)
                         {
                             btn.Visibility = Visibility.Visible;
                             btn.Content = $"Jump to latest ({_newLogCount})";
@@ -178,8 +176,7 @@ namespace FTP_Tool
                     _newLogCount = 0;
                     try
                     {
-                        var btn = FindName("btnJumpToLatest") as System.Windows.Controls.Button;
-                        if (btn != null) btn.Visibility = Visibility.Collapsed;
+                        if (FindName("btnJumpToLatest") is System.Windows.Controls.Button btn) btn.Visibility = Visibility.Collapsed;
                     }
                     catch { }
                 }
@@ -193,12 +190,11 @@ namespace FTP_Tool
             {
                 _isUserAtBottom = true;
                 _newLogCount = 0;
-                var btn = FindName("btnJumpToLatest") as System.Windows.Controls.Button;
-                if (btn != null) btn.Visibility = Visibility.Collapsed;
+                if (FindName("btnJumpToLatest") is System.Windows.Controls.Button btn) btn.Visibility = Visibility.Collapsed;
 
                 if (_displayedLogEntries.Count > 0)
                 {
-                    var last = _displayedLogEntries[_displayedLogEntries.Count - 1];
+                    var last = _displayedLogEntries[^1];
                     lstLog.ScrollIntoView(last);
                 }
             }
@@ -219,7 +215,7 @@ namespace FTP_Tool
             }
         }
 
-        private LogLevel ParseLogLevel(string? s)
+        private static LogLevel ParseLogLevel(string? s)
         {
             if (string.IsNullOrWhiteSpace(s)) return LogLevel.Info;
             return s.Trim().ToLowerInvariant() switch

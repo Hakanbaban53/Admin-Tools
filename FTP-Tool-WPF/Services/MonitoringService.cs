@@ -9,7 +9,8 @@ namespace FTP_Tool.Services
     {
         // onCheck: function that performs one check, returns true if any files downloaded
         // logger: optional logger callback
-        public async Task StartMonitoringLoopAsync(int seconds, CancellationToken token, Func<CancellationToken, Task<bool>> onCheck, Action<string, LogLevel>? logger = null)
+        // Note: CancellationToken placed last to conform to CA1068
+        public static async Task StartMonitoringLoopAsync(int seconds, Func<CancellationToken, Task<bool>> onCheck, Action<string, LogLevel>? logger = null, CancellationToken token = default)
         {
             if (seconds <= 0) seconds = 30;
 
@@ -29,7 +30,8 @@ namespace FTP_Tool.Services
                 }
                 catch (Exception ex)
                 {
-                    logger?.Invoke($"Scheduled check error: {ex.Message}", LogLevel.Error);
+                    // Log full exception detail to aid debugging
+                    logger?.Invoke($"Scheduled check error: {ex}", LogLevel.Error);
                 }
 
                 using var pt = new PeriodicTimer(TimeSpan.FromSeconds(seconds));
@@ -49,7 +51,8 @@ namespace FTP_Tool.Services
                     }
                     catch (Exception ex)
                     {
-                        logger?.Invoke($"Scheduled check error: {ex.Message}", LogLevel.Error);
+                        // Log full exception detail to aid debugging
+                        logger?.Invoke($"Scheduled check error: {ex}", LogLevel.Error);
                     }
                 }
             }
@@ -59,7 +62,8 @@ namespace FTP_Tool.Services
             }
             catch (Exception ex)
             {
-                logger?.Invoke($"Monitoring loop error: {ex.Message}", LogLevel.Error);
+                // Log full exception detail to aid debugging
+                logger?.Invoke($"Monitoring loop error: {ex}", LogLevel.Error);
             }
         }
     }

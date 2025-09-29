@@ -87,13 +87,13 @@ namespace FTP_Tool
                 if (!_isLoaded) animate = false;
 
                 UIElement toShow = MonitorPage;
-                switch (page)
+                toShow = page switch
                 {
-                    case "Settings": toShow = SettingsPage; break;
-                    case "Alerts": toShow = AlertsPage; break;
-                    case "About": toShow = AboutPage; break;
-                    default: toShow = MonitorPage; break;
-                }
+                    "Settings" => SettingsPage,
+                    "Alerts" => AlertsPage,
+                    "About" => AboutPage,
+                    _ => MonitorPage,
+                };
 
                 // hide the main pages then show the requested one
                 MonitorPage.Visibility = Visibility.Collapsed;

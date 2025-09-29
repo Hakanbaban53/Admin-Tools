@@ -35,10 +35,10 @@ namespace FTP_Tool
 
         private readonly FtpService _ftpService = new();
         private readonly SettingsService _settings_service;
-        private readonly CredentialService _credentialService = new CredentialService(); // added
+        private readonly CredentialService _credentialService = new(); // added
         private AppSettings _settings = new();
 
-        private MainViewModel _viewModel;
+        private readonly MainViewModel _viewModel;
         private bool _isLoaded = false; // track whether initial load completed
 
         private readonly string _logFilePath;
@@ -50,7 +50,7 @@ namespace FTP_Tool
         private LoggingService? _logging_service;
 
         // Monitoring service (extracted)
-        private readonly MonitoringService _monitoringService = new MonitoringService();
+        private readonly MonitoringService _monitoringService = new();
 
         // Tray icon
         private NotifyIcon? _trayIcon;
@@ -59,7 +59,7 @@ namespace FTP_Tool
         private bool _suppressHideOnClose = false;
 
         // expose collection for XAML binding
-        public ObservableCollection<LogEntry> _displayedLogEntriesPublic => _displayedLogEntries;
+        public ObservableCollection<LogEntry> DisplayedLogEntriesPublic => _displayedLogEntries;
 
         // Email service
         private EmailService? _emailService;
@@ -173,7 +173,7 @@ namespace FTP_Tool
                 catch { }
 
                 // create service if needed
-                if (_emailService == null) _emailService = new EmailService(_settings, _credentialService);
+                _emailService ??= new EmailService(_settings, _credentialService);
 
                 // send a simple alert email
                 await _emailService.SendEmailAsync("FTP Monitor - Alert (test)", "This is a simulated alert from FTP Monitor (test). Please ignore.");

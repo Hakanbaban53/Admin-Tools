@@ -31,15 +31,12 @@ namespace FTP_Tool
         {
             Dispatcher.BeginInvoke(() =>
             {
-                var ellipse = FindName("ellipseNavStatus") as System.Windows.Shapes.Ellipse;
-                var txtStatus = FindName("txtNavStatus") as System.Windows.Controls.TextBlock;
-
-                if (ellipse != null)
+                if (FindName("ellipseNavStatus") is System.Windows.Shapes.Ellipse ellipse)
                 {
                     ellipse.Fill = isMonitoring ? new SolidColorBrush(System.Windows.Media.Colors.Green) : new SolidColorBrush(System.Windows.Media.Colors.Orange);
                 }
 
-                if (txtStatus != null)
+                if (FindName("txtNavStatus") is System.Windows.Controls.TextBlock txtStatus)
                 {
                     txtStatus.Text = isMonitoring ? "Monitoring" : "Ready";
                     txtStatus.Foreground = isMonitoring ? new SolidColorBrush(System.Windows.Media.Color.FromRgb(0, 120, 212)) : new SolidColorBrush(System.Windows.Media.Colors.Gray);
@@ -51,16 +48,11 @@ namespace FTP_Tool
         {
             Dispatcher.BeginInvoke(() =>
             {
-                var txtFiles = FindName("txtNavFiles") as System.Windows.Controls.TextBlock;
-                var txtRemote = FindName("txtNavRemote") as System.Windows.Controls.TextBlock;
-                var txtErrors = FindName("txtNavErrors") as System.Windows.Controls.TextBlock;
-                var txtLast = FindName("txtNavLastCheck") as System.Windows.Controls.TextBlock;
+                if (FindName("txtNavFiles") is System.Windows.Controls.TextBlock txtFiles) txtFiles.Text = $"Processed: {_totalFilesMonitored} files";
+                if (FindName("txtNavRemote") is System.Windows.Controls.TextBlock txtRemote) txtRemote.Text = $"Remote: {_currentFilesInRemote} files";
+                if (FindName("txtNavErrors") is System.Windows.Controls.TextBlock txtErrors) txtErrors.Text = $"Errors: {_errorCount}";
 
-                if (txtFiles != null) txtFiles.Text = $"Processed: {_totalFilesMonitored} files";
-                if (txtRemote != null) txtRemote.Text = $"Remote: {_currentFilesInRemote} files";
-                if (txtErrors != null) txtErrors.Text = $"Errors: {_errorCount}";
-
-                if (txtLast != null)
+                if (FindName("txtNavLastCheck") is System.Windows.Controls.TextBlock txtLast)
                 {
                     if (_lastSuccessfulCheck != DateTime.MinValue)
                     {
@@ -92,20 +84,6 @@ namespace FTP_Tool
                     HideFloatingSidebar();
                 }
             });
-        }
-
-        private int CountLinesFast(string text)
-        {
-            if (string.IsNullOrEmpty(text)) return 0;
-
-            int count = 1;
-            int position = 0;
-            while ((position = text.IndexOf('\n', position)) != -1)
-            {
-                count++;
-                position++;
-            }
-            return count;
         }
 
         private void ClearLogIfNeeded()

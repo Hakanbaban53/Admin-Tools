@@ -89,5 +89,8 @@ namespace FTP_Tool.Models
 
         // If true, alerts are active at all times (ignore weekdays/work hours)
         public bool AlertAlways { get; set; } = false;
+
+        // Whether to actually send download/no-activity alert emails when threshold is reached
+        public bool SendDownloadAlerts { get; set; } = true;
     }
 }

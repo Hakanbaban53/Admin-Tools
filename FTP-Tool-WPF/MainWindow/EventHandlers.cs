@@ -59,6 +59,7 @@ namespace FTP_Tool
             Log("Monitor started", LogLevel.Info);
 
             try { UpdateTray(); } catch { }
+
         }
 
         private void BtnStop_Click(object sender, RoutedEventArgs e)
@@ -197,8 +198,7 @@ namespace FTP_Tool
             {
                 // animate off-screen using TranslateTransform
                 double width = (FloatingSidebar.ActualWidth > 0) ? FloatingSidebar.ActualWidth : 260;
-                var tt = FloatingSidebar.RenderTransform as System.Windows.Media.TranslateTransform;
-                if (tt == null)
+                if (FloatingSidebar.RenderTransform is not System.Windows.Media.TranslateTransform tt)
                 {
                     tt = new System.Windows.Media.TranslateTransform(0, 0);
                     FloatingSidebar.RenderTransform = tt;
@@ -229,8 +229,7 @@ namespace FTP_Tool
                 // Ensure floating sidebar buttons reflect the currently active page on first show
                 try { SetFloatingSidebarActive(_settings?.LastPage ?? "Monitor"); } catch { }
 
-                var tt = FloatingSidebar.RenderTransform as System.Windows.Media.TranslateTransform;
-                if (tt == null)
+                if (FloatingSidebar.RenderTransform is not System.Windows.Media.TranslateTransform tt)
                 {
                     tt = new System.Windows.Media.TranslateTransform(-FloatingSidebar.ActualWidth, 0);
                     FloatingSidebar.RenderTransform = tt;
@@ -252,12 +251,9 @@ namespace FTP_Tool
         {
             try
             {
-                var btnM = FindName("btnFloatingNavMonitor") as System.Windows.Controls.Button;
-                var btnS = FindName("btnFloatingNavSettings") as System.Windows.Controls.Button;
-                var btnA = FindName("btnFloatingNavAbout") as System.Windows.Controls.Button;
                 var btnL = FindName("btnFloatingNavAlerts") as System.Windows.Controls.Button; // optional
 
-                if (btnM != null && btnS != null && btnA != null)
+                if (FindName("btnFloatingNavMonitor") is System.Windows.Controls.Button btnM && FindName("btnFloatingNavSettings") is System.Windows.Controls.Button btnS && FindName("btnFloatingNavAbout") is System.Windows.Controls.Button btnA)
                 {
                     // reset all to NavButton
                     btnM.Style = (Style)FindResource("NavButton");
@@ -291,21 +287,20 @@ namespace FTP_Tool
         {
             try
             {
-                var lb = this.FindName("lstSavedCredentials") as System.Windows.Controls.ListBox;
-                if (lb == null) return;
+                if (this.FindName("lstSavedCredentials") is not System.Windows.Controls.ListBox lb) return;
 
                 lb.Items.Clear();
                 // show both ftp and smtp credentials grouped
                 var ftpList = _credentialService.ListSavedCredentials("ftp");
-                foreach (var item in ftpList)
+                foreach (var (Category, Host, Username) in ftpList)
                 {
-                    lb.Items.Add($"[FTP] {item.Host} : {item.Username}");
+                    lb.Items.Add($"[FTP] {Host} : {Username}");
                 }
 
                 var smtpList = _credentialService.ListSavedCredentials("smtp");
-                foreach (var item in smtpList)
+                foreach (var (Category, Host, Username) in smtpList)
                 {
-                    lb.Items.Add($"[SMTP] {item.Host} : {item.Username}");
+                    lb.Items.Add($"[SMTP] {Host} : {Username}");
                 }
             }
             catch (Exception ex)
@@ -332,8 +327,7 @@ namespace FTP_Tool
         {
             try
             {
-                var lb = this.FindName("lstSavedCredentials") as System.Windows.Controls.ListBox;
-                if (lb == null || lb.SelectedItem == null) return;
+                if (this.FindName("lstSavedCredentials") is not System.Windows.Controls.ListBox lb || lb.SelectedItem == null) return;
 
                 var sel = lb.SelectedItem.ToString();
                 if (string.IsNullOrEmpty(sel)) return;
@@ -351,9 +345,9 @@ namespace FTP_Tool
                     // remove prefix
                     var rest = sel;
                     var idx = sel.IndexOf(']');
-                    if (idx >= 0 && idx + 1 < sel.Length) rest = sel.Substring(idx + 1).Trim();
+                    if (idx >= 0 && idx + 1 < sel.Length) rest = sel[(idx + 1)..].Trim();
 
-                    var partsArr = rest.Split(new[] { ':' }, 2);
+                    var partsArr = rest.Split([':'], 2);
                     host = partsArr.Length >= 1 ? partsArr[0].Trim() : string.Empty;
                     user = partsArr.Length >= 2 ? partsArr[1].Trim() : string.Empty;
                 }
@@ -492,7 +486,7 @@ namespace FTP_Tool
             {
                 lstEmailRecipients.Items.Clear();
                 if (string.IsNullOrWhiteSpace(_settings.EmailRecipients)) return;
-                var parts = _settings.EmailRecipients.Split(new[] { ';' }, StringSplitOptions.RemoveEmptyEntries).Select(s => s.Trim()).Distinct(StringComparer.OrdinalIgnoreCase);
+                var parts = _settings.EmailRecipients.Split([';'], StringSplitOptions.RemoveEmptyEntries).Select(s => s.Trim()).Distinct(StringComparer.OrdinalIgnoreCase);
                 foreach (var p in parts) lstEmailRecipients.Items.Add(p);
             }
             catch { }
