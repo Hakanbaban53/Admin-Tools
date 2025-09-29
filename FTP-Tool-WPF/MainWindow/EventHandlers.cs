@@ -1,13 +1,9 @@
-using System;
 using System.Diagnostics;
 using System.IO;
 using System.Net;
-using System.Threading.Tasks;
-using System.Windows;
-using System.Windows.Controls;
-using System.Windows.Media.Animation;
-using System.Linq;
 using System.Net.Mail;
+using System.Windows;
+using System.Windows.Media.Animation;
 
 namespace FTP_Tool
 {

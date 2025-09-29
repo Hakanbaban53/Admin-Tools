@@ -1,24 +1,9 @@
-﻿using System;
-using System.IO;
-using System.Linq;
-using System.Net;
-using System.Text;
-using System.Threading;
-using System.Threading.Tasks;
-using System.Windows;
-using System.Windows.Controls;
-using System.Windows.Media.Animation;
-using System.Windows.Threading;
-using FluentFTP;
+﻿using FTP_Tool.Models;
 using FTP_Tool.Services;
-using FTP_Tool.Models;
 using FTP_Tool.ViewModels;
-using System.Diagnostics;
-using System.Windows.Media;
-using System.Runtime.ExceptionServices;
-using System.Windows.Forms; // for NotifyIcon
-using Microsoft.Win32; // for registry
 using System.Collections.ObjectModel;
+using System.IO;
+using System.Windows;
 
 namespace FTP_Tool
 {

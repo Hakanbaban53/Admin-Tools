@@ -1,10 +1,6 @@
-using System;
-using System.Linq;
-using System.Threading.Tasks;
 using FTP_Tool.Models;
 using MailKit.Security;
 using MimeKit;
-using MailKit.Net.Smtp;
 
 namespace FTP_Tool.Services
 {

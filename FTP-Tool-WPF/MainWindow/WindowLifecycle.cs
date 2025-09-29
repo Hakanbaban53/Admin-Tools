@@ -1,11 +1,9 @@
-using System;
-using System.Threading.Tasks;
-using System.Windows;
-using System.Windows.Controls;
 using FTP_Tool.Services;
 using Microsoft.Win32;
 using System.Reflection;
-using System.Linq;
+using System.Windows;
+using System.Windows.Controls;
+using System.Threading;
 
 namespace FTP_Tool
 {
@@ -375,7 +373,7 @@ namespace FTP_Tool
 
                 if (alertsEnabledCb != null)
                 {
-                    alertsEnabledCb.Checked += (s, ev) => { _settings.AlertsEnabled = true; _ = _settings_service.SaveAsync(_settings); ApplyAlertUiState(); };
+                    alertsEnabledCb.Checked += (s, ev) => { _settings.AlertsEnabled = true; _ = _settings_service.SaveAsync(_settings); ApplyAlertUiState(); _ = MaybeSendNoDownloadAlertAsync(CancellationToken.None); };
                     alertsEnabledCb.Unchecked += (s, ev) => { _settings.AlertsEnabled = false; _ = _settings_service.SaveAsync(_settings); ApplyAlertUiState(); };
                 }
 
@@ -387,7 +385,7 @@ namespace FTP_Tool
 
                 if (sendDownloadCb != null)
                 {
-                    sendDownloadCb.Checked += (s, ev) => { _settings.SendDownloadAlerts = true; _ = _settings_service.SaveAsync(_settings); ApplyAlertUiState(); };
+                    sendDownloadCb.Checked += (s, ev) => { _settings.SendDownloadAlerts = true; _ = _settings_service.SaveAsync(_settings); ApplyAlertUiState(); _ = MaybeSendNoDownloadAlertAsync(CancellationToken.None); };
                     sendDownloadCb.Unchecked += (s, ev) => { _settings.SendDownloadAlerts = false; _ = _settings_service.SaveAsync(_settings); ApplyAlertUiState(); };
                 }
 

@@ -1,15 +1,10 @@
-﻿using System;
-using System.Configuration;
-using System.Data;
-using System.Threading.Tasks;
-using System.Windows;
+﻿using FTP_Tool.Models;
+using FTP_Tool.Services;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
-using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.Options;
-using FTP_Tool.Services;
-using FTP_Tool.Models;
 using System.IO;
+using System.Windows;
 
 namespace FTP_Tool
 {

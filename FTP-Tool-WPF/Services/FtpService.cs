@@ -1,12 +1,8 @@
-using System;
+using FluentFTP;
+using System.Diagnostics;
 using System.IO;
-using System.Linq;
 using System.Net;
 using System.Reflection;
-using System.Threading;
-using System.Threading.Tasks;
-using System.Diagnostics;
-using FluentFTP;
 
 namespace FTP_Tool.Services
 {
@@ -34,7 +30,7 @@ namespace FTP_Tool.Services
         private static PropertyInfo? _dataConnectionTypeProperty;
         private static Type? _dataConnectionEnumType;
         private static bool _reflectionInitialized;
-        private static readonly object _reflectionLock = new object();
+        private static readonly object _reflectionLock = new();
 
         /// <summary>
         /// Optional telemetry callback (message, level)
@@ -77,57 +73,63 @@ namespace FTP_Tool.Services
             await _lock.WaitAsync(token).ConfigureAwait(false);
             try
             {
-                if (_disposed) throw new ObjectDisposedException(nameof(FtpService));
-
-                // Validate inputs early
-                if (string.IsNullOrWhiteSpace(host))
-                    throw new ArgumentException("Host is required", nameof(host));
-                if (creds == null)
-                    throw new ArgumentNullException(nameof(creds));
-                if (string.IsNullOrWhiteSpace(creds.UserName))
-                    throw new ArgumentException("Username is required", nameof(creds));
-                if (creds.Password == null)
-                    throw new ArgumentException("Password must be provided (can be empty string)", nameof(creds));
-
-                // Determine if we need a new client
-                bool needNew = _client == null ||
-                               !string.Equals(_host, host, StringComparison.OrdinalIgnoreCase) ||
-                               _port != port ||
-                               _creds?.UserName != creds.UserName ||
-                               _creds?.Password != creds.Password;
-
-                if (needNew)
+                if (!_disposed)
                 {
-                    DisconnectAndDisposeClient();
-
-                    _host = host;
-                    _port = port;
-                    _creds = new NetworkCredential(creds.UserName, creds.Password);
-
-                    _client = new FtpClient(host)
+                    // Validate inputs early
+                    if (string.IsNullOrWhiteSpace(host))
+                        throw new ArgumentException("Host is required", nameof(host));
+                    if (creds != null)
                     {
-                        Port = port,
-                        Credentials = _creds
-                    };
+                        if (string.IsNullOrWhiteSpace(creds.UserName))
+                            throw new ArgumentException("Username is required", nameof(creds));
+                        if (creds.Password == null)
+                            throw new ArgumentException("Password must be provided (can be empty string)", nameof(creds));
 
-                    // Initialize reflection cache once
-                    InitializeReflectionCache();
+                        // Determine if we need a new client
+                        bool needNew = _client == null ||
+                                       !string.Equals(_host, host, StringComparison.OrdinalIgnoreCase) ||
+                                       _port != port ||
+                                       _creds?.UserName != creds.UserName ||
+                                       _creds?.Password != creds.Password;
 
-                    // Apply timeout settings
-                    ApplyTimeoutSettings(_client);
+                        if (needNew)
+                        {
+                            DisconnectAndDisposeClient();
 
-                    // Apply passive/active mode
-                    ApplyDataConnectionType(_client);
+                            _host = host;
+                            _port = port;
+                            _creds = new NetworkCredential(creds.UserName, creds.Password);
 
-                    // Certificate validation
-                    _client.ValidateCertificate += OnValidateCertificate;
+                            _client = new FtpClient(host)
+                            {
+                                Port = port,
+                                Credentials = _creds
+                            };
+
+                            // Initialize reflection cache once
+                            InitializeReflectionCache();
+
+                            // Apply timeout settings
+                            ApplyTimeoutSettings(_client);
+
+                            // Apply passive/active mode
+                            ApplyDataConnectionType(_client);
+
+                            // Certificate validation
+                            _client.ValidateCertificate += OnValidateCertificate;
+                        }
+
+                        // Check connection state and connect if needed
+                        if (_client == null || !_client.IsConnected)
+                        {
+                            await ConnectWithRetriesAsync(_client!, token).ConfigureAwait(false);
+                        }
+                    }
+                    else
+                        throw new ArgumentNullException(nameof(creds));
                 }
-
-                // Check connection state and connect if needed
-                if (_client == null || !_client.IsConnected)
-                {
-                    await ConnectWithRetriesAsync(_client!, token).ConfigureAwait(false);
-                }
+                else
+                    throw new ObjectDisposedException(nameof(FtpService));
             }
             finally
             {
@@ -143,13 +145,13 @@ namespace FTP_Tool.Services
             var sw = Stopwatch.StartNew();
             await EnsureConnectedAsync(host, port, creds, token).ConfigureAwait(false);
             var client = _client;
-            if (client == null) return Array.Empty<string>();
+            if (client == null) return [];
 
             var result = await Task.Run<string[]>(() =>
             {
                 var folder = NormalizeRemoteFolder(remoteFolder);
-                var listing = client.GetNameListing(folder) ?? Array.Empty<string>();
-                return listing.Select(p => Path.GetFileName(p.TrimEnd('/'))).Where(n => !string.IsNullOrWhiteSpace(n)).ToArray();
+                var listing = client.GetNameListing(folder) ?? [];
+                return [.. listing.Select(p => Path.GetFileName(p.TrimEnd('/'))).Where(n => !string.IsNullOrWhiteSpace(n))];
             }, token).ConfigureAwait(false);
 
             sw.Stop();
@@ -166,7 +168,7 @@ namespace FTP_Tool.Services
             var sw = Stopwatch.StartNew();
             await EnsureConnectedAsync(host, port, creds, token).ConfigureAwait(false);
             var client = _client;
-            if (client == null) return Array.Empty<(string, bool)>();
+            if (client == null) return [];
 
             var result = await Task.Run<(string, bool)[]>(() =>
             {
@@ -177,10 +179,9 @@ namespace FTP_Tool.Services
                     var listing = client.GetListing(folder);
                     if (listing != null)
                     {
-                        return listing
+                        return [.. listing
                             .Where(item => !string.IsNullOrWhiteSpace(item.Name) && item.Name != "." && item.Name != "..")
-                            .Select(item => (item.Name, item.Type == FtpObjectType.Directory))
-                            .ToArray();
+                            .Select(item => (item.Name, item.Type == FtpObjectType.Directory))];
                     }
                 }
                 catch (Exception ex)
@@ -191,8 +192,8 @@ namespace FTP_Tool.Services
                 // Fallback: use name listing and guess based on extension
                 try
                 {
-                    var nameListing = client.GetNameListing(folder) ?? Array.Empty<string>();
-                    return nameListing
+                    var nameListing = client.GetNameListing(folder) ?? [];
+                    return [.. nameListing
                         .Select(p => Path.GetFileName(p.TrimEnd('/')))
                         .Where(n => !string.IsNullOrWhiteSpace(n))
                         .Select(name =>
@@ -200,13 +201,12 @@ namespace FTP_Tool.Services
                             // Guess: if no extension, likely a directory
                             bool likelyDir = !name.Contains('.');
                             return (name, likelyDir);
-                        })
-                        .ToArray();
+                        })];
                 }
                 catch (Exception ex)
                 {
                     Logger?.Invoke($"Name listing also failed for {folder}: {ex.Message}", FTP_Tool.LogLevel.Warning);
-                    return Array.Empty<(string, bool)>();
+                    return [];
                 }
             }, token).ConfigureAwait(false);
 
@@ -435,8 +435,8 @@ namespace FTP_Tool.Services
         {
             if (string.IsNullOrWhiteSpace(folder) || folder == "/") return "/";
             folder = folder.Trim().Replace('\\', '/'); // Handle Windows-style paths
-            if (!folder.StartsWith("/")) folder = "/" + folder;
-            if (folder.EndsWith("/") && folder.Length > 1) folder = folder.TrimEnd('/');
+            if (!folder.StartsWith('/')) folder = "/" + folder;
+            if (folder.EndsWith('/') && folder.Length > 1) folder = folder.TrimEnd('/');
             return folder;
         }
 
@@ -480,11 +480,11 @@ namespace FTP_Tool.Services
                 {
                     // Try to use async connect if available
                     var clientType = client.GetType();
-                    var connectAsyncMethod = clientType.GetMethod("ConnectAsync", new[] { typeof(CancellationToken) });
+                    var connectAsyncMethod = clientType.GetMethod("ConnectAsync", [typeof(CancellationToken)]);
 
                     if (connectAsyncMethod != null)
                     {
-                        var task = (Task?)connectAsyncMethod.Invoke(client, new object[] { token });
+                        var task = (Task?)connectAsyncMethod.Invoke(client, [token]);
                         if (task != null) await task.ConfigureAwait(false);
                     }
                     else

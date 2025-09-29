@@ -1,7 +1,5 @@
-using System;
 using Serilog;
 using Serilog.Events;
-using Serilog.Sinks.Async;
 
 namespace FTP_Tool.Services
 {

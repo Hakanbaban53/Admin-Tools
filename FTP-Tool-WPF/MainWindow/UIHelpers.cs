@@ -1,9 +1,6 @@
-using System;
-using System.Windows;
-using System.Windows.Controls;
-using System.Windows.Media;
-using System.Threading.Tasks;
 using FTP_Tool.Models;
+using System.Windows;
+using System.Windows.Media;
 
 namespace FTP_Tool
 {
@@ -41,6 +38,22 @@ namespace FTP_Tool
                     txtStatus.Text = isMonitoring ? "Monitoring" : "Ready";
                     txtStatus.Foreground = isMonitoring ? new SolidColorBrush(System.Windows.Media.Color.FromRgb(0, 120, 212)) : new SolidColorBrush(System.Windows.Media.Colors.Gray);
                 }
+
+                // Floating sidebar status
+                try
+                {
+                    if (FindName("ellipseFloatingNavStatus") is System.Windows.Shapes.Ellipse fe)
+                    {
+                        fe.Fill = isMonitoring ? new SolidColorBrush(System.Windows.Media.Colors.Green) : new SolidColorBrush(System.Windows.Media.Colors.Orange);
+                    }
+
+                    if (FindName("txtFloatingNavStatus") is System.Windows.Controls.TextBlock ftxtStatus)
+                    {
+                        ftxtStatus.Text = isMonitoring ? "Monitoring" : "Ready";
+                        ftxtStatus.Foreground = isMonitoring ? new SolidColorBrush(System.Windows.Media.Color.FromRgb(0, 120, 212)) : new SolidColorBrush(System.Windows.Media.Colors.Gray);
+                    }
+                }
+                catch { }
             });
         }
 
@@ -63,6 +76,51 @@ namespace FTP_Tool
                         txtLast.Text = "Last: Never";
                     }
                 }
+
+                if (FindName("txtNavLastAlert") is System.Windows.Controls.TextBlock txtAlert)
+                {
+                    if (_lastAlertSent != DateTime.MinValue)
+                    {
+                        txtAlert.Text = $"Last alert: {_lastAlertSent:HH:mm:ss}";
+                    }
+                    else
+                    {
+                        txtAlert.Text = "Last alert: -";
+                    }
+                }
+
+                // Floating sidebar stats
+                try
+                {
+                    if (FindName("txtFloatingNavFiles") is System.Windows.Controls.TextBlock fFiles) fFiles.Text = $"Processed: {_totalFilesMonitored} files";
+                    if (FindName("txtFloatingNavRemote") is System.Windows.Controls.TextBlock fRemote) fRemote.Text = $"Remote: {_currentFilesInRemote} files";
+                    if (FindName("txtFloatingNavErrors") is System.Windows.Controls.TextBlock fErrors) fErrors.Text = $"Errors: {_errorCount}";
+
+                    if (FindName("txtFloatingNavLastCheck") is System.Windows.Controls.TextBlock fLast)
+                    {
+                        if (_lastSuccessfulCheck != DateTime.MinValue)
+                        {
+                            fLast.Text = $"Last: {_lastSuccessfulCheck:HH:mm:ss}";
+                        }
+                        else
+                        {
+                            fLast.Text = "Last: Never";
+                        }
+                    }
+
+                    if (FindName("txtFloatingNavLastAlert") is System.Windows.Controls.TextBlock fAlert)
+                    {
+                        if (_lastAlertSent != DateTime.MinValue)
+                        {
+                            fAlert.Text = $"Last alert: {_lastAlertSent:HH:mm:ss}";
+                        }
+                        else
+                        {
+                            fAlert.Text = "Last alert: -";
+                        }
+                    }
+                }
+                catch { }
             });
         }
 

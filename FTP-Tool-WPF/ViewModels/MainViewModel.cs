@@ -1,11 +1,8 @@
-using System;
+using FTP_Tool.Services;
 using System.Collections.Concurrent;
 using System.ComponentModel;
-using System.Runtime.CompilerServices;
-using System.Threading;
-using System.Threading.Tasks;
-using FTP_Tool.Services;
 using System.Net;
+using System.Runtime.CompilerServices;
 
 namespace FTP_Tool.ViewModels
 {

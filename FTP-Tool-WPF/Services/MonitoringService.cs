@@ -1,8 +1,3 @@
-using System;
-using System.Threading;
-using System.Threading.Tasks;
-using FTP_Tool;
-
 namespace FTP_Tool.Services
 {
     public class MonitoringService

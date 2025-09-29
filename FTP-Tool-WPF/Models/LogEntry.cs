@@ -1,5 +1,3 @@
-using System;
-
 namespace FTP_Tool.Models
 {
     public class LogEntry

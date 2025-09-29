@@ -1,12 +1,10 @@
-using System;
+using FTP_Tool.Models;
+using System.Collections.Concurrent;
+using System.Collections.ObjectModel;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
-using System.Collections.Concurrent;
-using System.Collections.Generic;
 using System.Windows.Threading;
-using System.Collections.ObjectModel;
-using FTP_Tool.Models;
 
 namespace FTP_Tool
 {
@@ -95,9 +93,14 @@ namespace FTP_Tool
                 }
 
                 var toAdd = new List<LogEntry>();
-                while (_pendingLogEntries.TryDequeue(out var ln))
+
+                // Dequeue up to a reasonable cap per tick to avoid long UI freezes
+                const int maxPerTick = 200;
+                int count = 0;
+                while (count < maxPerTick && _pendingLogEntries.TryDequeue(out var ln))
                 {
                     toAdd.Add(ln);
+                    count++;
                 }
 
                 if (toAdd.Count == 0) return;

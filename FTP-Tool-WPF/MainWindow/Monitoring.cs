@@ -1,26 +1,32 @@
-using System;
-using System.Threading;
-using System.Threading.Tasks;
 using System.Diagnostics;
-using System.Net;
 
 namespace FTP_Tool
 {
     public partial class MainWindow
     {
         private Task? _monitoringTask;
+        // Track when monitoring started so threshold can be measured even before first download
+        private DateTime _monitoringStartedAt = DateTime.MinValue;
+        // Track when we last sent an alert
+        private DateTime _lastAlertSent = DateTime.MinValue;
 
         private async Task StartMonitoringLoopAsync(int seconds, CancellationToken token)
         {
             if (seconds <= 0) seconds = 30;
             try
             {
+                // mark monitoring start
+                _monitoringStartedAt = DateTime.Now;
+
                 try
                 {
                     if (token.IsCancellationRequested) return;
                     Log("Scheduled check starting...", LogLevel.Info);
                     await DownloadOnceAsync(token, "Scheduled");
                     Log("Scheduled check finished.", LogLevel.Info);
+
+                    // check alerts after the run
+                    try { await MaybeSendNoDownloadAlertAsync(token); } catch { }
                 }
                 catch (OperationCanceledException)
                 {
@@ -40,6 +46,9 @@ namespace FTP_Tool
                         Log("Scheduled check starting...", LogLevel.Info);
                         await DownloadOnceAsync(token, "Scheduled");
                         Log("Scheduled check finished.", LogLevel.Info);
+
+                        // check alerts after the run
+                        try { await MaybeSendNoDownloadAlertAsync(token); } catch { }
                     }
                     catch (OperationCanceledException)
                     {
@@ -166,9 +175,18 @@ namespace FTP_Tool
                 _totalFilesMonitored += downloaded;
                 if (errors > 0) _errorCount += errors;
 
-                if (downloaded > 0 || fileCount > 0)
+                // Only consider an actual file download as a successful check for alert purposes.
+                if (downloaded > 0)
                 {
                     _lastSuccessfulCheck = DateTime.Now;
+                    // reset last alert sent so future threshold breaches can alert again
+                    _lastAlertSent = DateTime.MinValue;
+
+                    // update UI for last alert (cleared)
+                    Dispatcher.Invoke(() =>
+                    {
+                        try { txtLastAlert.Text = "-"; } catch { }
+                    });
                 }
             }
             catch (OperationCanceledException)
@@ -206,6 +224,107 @@ namespace FTP_Tool
             }
 
             return anyDownloaded;
+        }
+
+        // Evaluate alert threshold and send alert emails repeatedly at AlertThresholdMinutes while no downloads occur.
+        private async Task MaybeSendNoDownloadAlertAsync(CancellationToken token)
+        {
+            try
+            {
+                if (token.IsCancellationRequested) return;
+
+                // Basic guard: alerts must be enabled and sending download alerts allowed
+                if (_settings == null) return;
+                if (!_settings.AlertsEnabled) return;
+                if (!_settings.SendDownloadAlerts) return;
+                if (_settings.AlertThresholdMinutes <= 0) return;
+
+                var now = DateTime.Now;
+
+                // Check schedule (weekdays / work hours) unless AlertAlways
+                bool inSchedule = false;
+                if (_settings.AlertAlways)
+                {
+                    inSchedule = true;
+                }
+                else
+                {
+                    var days = (_settings.AlertWeekdays ?? string.Empty).Split([',', ';'], StringSplitOptions.RemoveEmptyEntries).Select(s => s.Trim());
+                    var shortDay = now.ToString("ddd"); // Mon, Tue, ...
+                    if (!days.Contains(shortDay))
+                    {
+                        inSchedule = false;
+                    }
+                    else
+                    {
+                        if (TimeSpan.TryParse(_settings.WorkStart ?? "08:00", out var workStart) && TimeSpan.TryParse(_settings.WorkEnd ?? "17:00", out var workEnd))
+                        {
+                            var t = now.TimeOfDay;
+                            var inWork = t >= workStart && t <= workEnd;
+
+                            var inLunch = false;
+                            if (TimeSpan.TryParse(_settings.LunchStart ?? "12:00", out var lunchStart) && TimeSpan.TryParse(_settings.LunchEnd ?? "13:00", out var lunchEnd))
+                            {
+                                inLunch = t >= lunchStart && t <= lunchEnd;
+                            }
+
+                            inSchedule = inWork && !inLunch;
+                        }
+                    }
+                }
+
+                if (!inSchedule) return;
+
+                // Determine reference time for last activity: either last successful download or monitoring started time
+                var lastActivity = (_lastSuccessfulCheck != DateTime.MinValue) ? _lastSuccessfulCheck : _monitoringStartedAt;
+                if (lastActivity == DateTime.MinValue) return; // nothing to compare yet
+
+                var minutesSince = (DateTime.Now - lastActivity).TotalMinutes;
+                if (minutesSince < _settings.AlertThresholdMinutes) return;
+
+                // Determine if we should send (first time after threshold OR repeat interval elapsed)
+                var shouldSend = false;
+                if (_lastAlertSent == DateTime.MinValue)
+                {
+                    shouldSend = true; // first alert
+                }
+                else
+                {
+                    // repeat every AlertThresholdMinutes while no downloads occur
+                    var repeatMinutes = Math.Max(1, _settings.AlertThresholdMinutes);
+                    if ((DateTime.Now - _lastAlertSent).TotalMinutes >= repeatMinutes)
+                        shouldSend = true;
+                }
+
+                if (!shouldSend) return;
+
+                // prepare and send email
+                try
+                {
+                    _emailService ??= new Services.EmailService(_settings, _credentialService);
+                    var subject = $"FTP Monitor - No downloads for {_settings.AlertThresholdMinutes} minutes";
+                    var body = $"No downloads detected for at least {_settings.AlertThresholdMinutes} minutes.\nHost: {txtHost.Text.Trim()}\nRemote folder: {txtRemoteFolder.Text.Trim()}\nLocal folder: {txtLocalFolder.Text.Trim()}\nLast activity: {lastActivity:yyyy-MM-dd HH:mm:ss}\nNow: {now:yyyy-MM-dd HH:mm:ss}";
+
+                    Log("Alert threshold exceeded, sending alert email...", LogLevel.Warning);
+                    await _emailService.SendEmailAsync(subject, body);
+                    _lastAlertSent = DateTime.Now;
+                    Log("Alert email sent.", LogLevel.Info);
+
+                    // Update UI with last alert time
+                    Dispatcher.Invoke(() =>
+                    {
+                        try { txtLastAlert.Text = _lastAlertSent.ToString("yyyy-MM-dd HH:mm:ss"); } catch { }
+                    });
+                }
+                catch (Exception ex)
+                {
+                    Log($"Failed to send alert email: {ex.Message}", LogLevel.Error);
+                }
+            }
+            catch (Exception ex)
+            {
+                Log($"MaybeSendNoDownloadAlertAsync error: {ex.Message}", LogLevel.Debug);
+            }
         }
 
         private void StopMonitoring(string message)

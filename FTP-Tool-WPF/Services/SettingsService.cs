@@ -1,8 +1,6 @@
-using System;
+using FTP_Tool.Models;
 using System.IO;
 using System.Text.Json;
-using System.Threading.Tasks;
-using FTP_Tool.Models;
 
 namespace FTP_Tool.Services
 {

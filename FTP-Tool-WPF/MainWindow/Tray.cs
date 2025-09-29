@@ -1,8 +1,6 @@
-using System;
 using System.Diagnostics;
 using System.Windows;
 using System.Windows.Threading;
-using System.Windows.Forms;
 
 namespace FTP_Tool
 {
@@ -15,6 +13,7 @@ namespace FTP_Tool
         private ToolStripMenuItem? _trayRemoteItem;
         private ToolStripMenuItem? _trayErrorsItem;
         private ToolStripMenuItem? _trayLastCheckItem;
+        private ToolStripMenuItem? _trayLastAlertItem;
         private ToolStripMenuItem? _trayStartItem;
         private ToolStripMenuItem? _trayStopItem;
 
@@ -40,6 +39,7 @@ namespace FTP_Tool
                 _trayRemoteItem = new ToolStripMenuItem("Remote: 0 files") { Enabled = false };
                 _trayErrorsItem = new ToolStripMenuItem("Errors: 0") { Enabled = false };
                 _trayLastCheckItem = new ToolStripMenuItem("Last: -") { Enabled = false };
+                _trayLastAlertItem = new ToolStripMenuItem("Last alert: -") { Enabled = false };
 
                 cm.Items.Add(_trayStatusItem);
                 cm.Items.Add(_trayHostItem);
@@ -47,6 +47,7 @@ namespace FTP_Tool
                 cm.Items.Add(_trayRemoteItem);
                 cm.Items.Add(_trayErrorsItem);
                 cm.Items.Add(_trayLastCheckItem);
+                cm.Items.Add(_trayLastAlertItem);
 
                 cm.Items.Add(new ToolStripSeparator());
 
@@ -54,13 +55,17 @@ namespace FTP_Tool
                 showItem.ToolTipText = "Restore the application window from the tray";
                 showItem.Click += (s, e) => ShowFromTray();
 
-                _trayStartItem = new ToolStripMenuItem("Start Monitoring");
-                _trayStartItem.ToolTipText = "Begin monitoring immediately";
+                _trayStartItem = new ToolStripMenuItem("Start Monitoring")
+                {
+                    ToolTipText = "Begin monitoring immediately"
+                };
                 _trayStartItem.Click += (s, e) => Dispatcher.Invoke(() => BtnStart_Click(this, new RoutedEventArgs()));
                 cm.Items.Add(_trayStartItem);
 
-                _trayStopItem = new ToolStripMenuItem("Stop Monitoring");
-                _trayStopItem.ToolTipText = "Stop monitoring";
+                _trayStopItem = new ToolStripMenuItem("Stop Monitoring")
+                {
+                    ToolTipText = "Stop monitoring"
+                };
                 _trayStopItem.Click += (s, e) => Dispatcher.Invoke(() => BtnStop_Click(this, new RoutedEventArgs()));
                 cm.Items.Add(_trayStopItem);
 
@@ -127,6 +132,14 @@ namespace FTP_Tool
                             _trayLastCheckItem.Text = "Last: Never";
                     }
 
+                    if (_trayLastAlertItem != null)
+                    {
+                        if (_lastAlertSent != DateTime.MinValue)
+                            _trayLastAlertItem.Text = $"Last alert: {_lastAlertSent:yyyy-MM-dd HH:mm:ss}";
+                        else
+                            _trayLastAlertItem.Text = "Last alert: -";
+                    }
+
                     // enable/disable start/stop based on monitoring state
                     if (_trayStartItem != null) _trayStartItem.Enabled = !isMonitoring;
                     if (_trayStopItem != null) _trayStopItem.Enabled = isMonitoring;
@@ -135,12 +148,12 @@ namespace FTP_Tool
                     try
                     {
                         var tooltip = isMonitoring ? "FTP Monitor - Monitoring" : "FTP Monitor - Idle";
-                        tooltip += $" | Host: { (string.IsNullOrWhiteSpace(txtHost?.Text) ? "-" : txtHost.Text.Trim()) }";
+                        tooltip += $" | Host: {(string.IsNullOrWhiteSpace(txtHost?.Text) ? "-" : txtHost.Text.Trim())}";
                         tooltip += $" | Processed: {_totalFilesMonitored}";
                         tooltip += $" | Errors: {_errorCount}";
 
                         // NotifyIcon.Text limited to 63 chars on Windows; truncate if too long
-                        if (tooltip.Length > 60) tooltip = tooltip.Substring(0, 60);
+                        if (tooltip.Length > 60) tooltip = tooltip[..60];
                         _trayIcon.Text = tooltip;
                     }
                     catch { }
