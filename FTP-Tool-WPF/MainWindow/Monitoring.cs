@@ -241,39 +241,8 @@ namespace FTP_Tool
 
                 var now = DateTime.Now;
 
-                // Check schedule (weekdays / work hours) unless AlertAlways
-                bool inSchedule = false;
-                if (_settings.AlertAlways)
-                {
-                    inSchedule = true;
-                }
-                else
-                {
-                    var days = (_settings.AlertWeekdays ?? string.Empty).Split([',', ';'], StringSplitOptions.RemoveEmptyEntries).Select(s => s.Trim());
-                    var shortDay = now.ToString("ddd"); // Mon, Tue, ...
-                    if (!days.Contains(shortDay))
-                    {
-                        inSchedule = false;
-                    }
-                    else
-                    {
-                        if (TimeSpan.TryParse(_settings.WorkStart ?? "08:00", out var workStart) && TimeSpan.TryParse(_settings.WorkEnd ?? "17:00", out var workEnd))
-                        {
-                            var t = now.TimeOfDay;
-                            var inWork = t >= workStart && t <= workEnd;
-
-                            var inLunch = false;
-                            if (TimeSpan.TryParse(_settings.LunchStart ?? "12:00", out var lunchStart) && TimeSpan.TryParse(_settings.LunchEnd ?? "13:00", out var lunchEnd))
-                            {
-                                inLunch = t >= lunchStart && t <= lunchEnd;
-                            }
-
-                            inSchedule = inWork && !inLunch;
-                        }
-                    }
-                }
-
-                if (!inSchedule) return;
+                // Use new helper for schedule check
+                if (!IsAlertTime(now)) return;
 
                 // Determine reference time for last activity: either last successful download or monitoring started time
                 var lastActivity = (_lastSuccessfulCheck != DateTime.MinValue) ? _lastSuccessfulCheck : _monitoringStartedAt;
@@ -325,6 +294,51 @@ namespace FTP_Tool
             {
                 Log($"MaybeSendNoDownloadAlertAsync error: {ex.Message}", LogLevel.Debug);
             }
+        }
+        private static readonly char[] separator = [',', ';'];
+
+        // Determines if the current time is within the allowed alert schedule.
+        /// <summary>
+        /// Determines if the current time is within the allowed alert schedule.
+        /// </summary>
+        /// <param name="now">The time to check (usually DateTime.Now)</param>
+        /// <returns>True if alerts are allowed at this time</returns>
+        private bool IsAlertTime(DateTime now)
+        {
+            if (_settings == null) return false;
+            if (!_settings.AlertsEnabled) return false;
+            if (_settings.AlertAlways) return true;
+
+            // Check weekday
+            var days = (_settings.AlertWeekdays ?? string.Empty)
+                .Split(separator, StringSplitOptions.RemoveEmptyEntries)
+                .Select(s => s.Trim());
+            var shortDay = now.ToString("ddd"); // Mon, Tue, ...
+            if (!days.Contains(shortDay)) return false;
+
+            // If AllDay is enabled, we honor the selected weekdays but ignore work hours / lunch
+            if (_settings.AllDay)
+            {
+                return true;
+            }
+
+            // Check work hours
+            if (TimeSpan.TryParse(_settings.WorkStart ?? "08:00", out var workStart) &&
+                TimeSpan.TryParse(_settings.WorkEnd ?? "17:00", out var workEnd))
+            {
+                var t = now.TimeOfDay;
+                var inWork = t >= workStart && t <= workEnd;
+                if (!inWork) return false;
+
+                // Check lunch break
+                if (TimeSpan.TryParse(_settings.LunchStart ?? "12:00", out var lunchStart) &&
+                    TimeSpan.TryParse(_settings.LunchEnd ?? "13:00", out var lunchEnd))
+                {
+                    var inLunch = t >= lunchStart && t <= lunchEnd;
+                    if (inLunch) return false;
+                }
+            }
+            return true;
         }
 
         private void StopMonitoring(string message)

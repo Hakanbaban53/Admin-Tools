@@ -81,6 +81,9 @@ namespace FTP_Tool.Models
         public string LunchStart { get; set; } = "12:00";
         public string LunchEnd { get; set; } = "13:00";
 
+        // New: Send alerts all day on selected weekdays (ignore work hours and lunch)
+        public bool AllDay { get; set; } = false;
+
         // Minutes to wait without any download before triggering alert
         public int AlertThresholdMinutes { get; set; } = 15;
 

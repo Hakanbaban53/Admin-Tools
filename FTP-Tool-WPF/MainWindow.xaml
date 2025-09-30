@@ -448,7 +448,7 @@
                                         <StackPanel Margin="0,0,0,12">
                                             <TextBlock Text="Check Interval" Style="{StaticResource LabelText}" Margin="0,0,0,4"/>
                                             <StackPanel Orientation="Horizontal">
-                                                <TextBox x:Name="txtInterval" Width="80" Text="30" 
+                                                <TextBox x:Name="txtInterval" Width="auto" MaxWidth="100" Text="30" 
                                              Style="{StaticResource ModernTextBox}"
                                              ToolTip="How often to check for new files (in seconds)"/>
                                                 <TextBlock Text="seconds" Style="{StaticResource LabelText}" 
@@ -706,12 +706,12 @@
 
                                     <TextBlock Grid.Row="0" Grid.Column="0" Text="Connection timeout:" Style="{StaticResource LabelText}" Margin="0,0,10,12"/>
                                     <StackPanel Grid.Row="0" Grid.Column="1" Orientation="Horizontal" Margin="0,0,0,12">
-                                        <TextBox x:Name="txtConnectionTimeout" Width="80" Text="30" Style="{StaticResource ModernTextBox}"/>
+                                        <TextBox x:Name="txtConnectionTimeout" Width="auto" MaxWidth="100" Text="30" Style="{StaticResource ModernTextBox}"/>
                                         <TextBlock Text="seconds" Style="{StaticResource LabelText}" Margin="10,0,0,0"/>
                                     </StackPanel>
 
                                     <TextBlock Grid.Row="1" Grid.Column="0" Text="Max retry attempts:" Style="{StaticResource LabelText}" Margin="0,0,10,12"/>
-                                    <TextBox x:Name="txtMaxRetries" Grid.Row="1" Grid.Column="1" Width="80" Text="3" Style="{StaticResource ModernTextBox}" HorizontalAlignment="Left" Margin="0,0,0,12"/>
+                                    <TextBox x:Name="txtMaxRetries" Grid.Row="1" Grid.Column="1" Width="auto" MaxWidth="100" Text="3" Style="{StaticResource ModernTextBox}" HorizontalAlignment="Left" Margin="0,0,0,12"/>
 
                                     <TextBlock Grid.Row="3" Grid.Column="0" Text="Passive FTP mode:" Style="{StaticResource LabelText}" Margin="0,0,10,0"/>
                                     <CheckBox x:Name="chkUsePassiveMode" Grid.Row="3" Grid.Column="1" Content="Use passive mode (recommended)" FontSize="14"/>
@@ -985,7 +985,7 @@
                                                     <CheckBox x:Name="chkEmailInfo" Content="Info summaries (batched)" FontWeight="SemiBold" Foreground="#007BFF"/>
                                                     <StackPanel Orientation="Horizontal" Margin="24,8,0,0">
                                                         <TextBlock Text="Send summary every:" VerticalAlignment="Center"/>
-                                                        <TextBox x:Name="txtEmailSummaryInterval" Width="60" Text="60" Style="{StaticResource ModernTextBox}" Margin="8,0,0,0"/>
+                                                        <TextBox x:Name="txtEmailSummaryInterval" Width="auto" MaxWidth="100" Text="60" Style="{StaticResource ModernTextBox}" Margin="8,0,0,0"/>
                                                         <TextBlock Text="minutes" VerticalAlignment="Center" Margin="8,0,0,0"/>
                                                     </StackPanel>
                                                 </StackPanel>
@@ -1000,6 +1000,11 @@
                                         <!-- All-time option prominently placed -->
                                         <Border Background="#FFF3CD" BorderBrush="#856404" BorderThickness="1" CornerRadius="4" Padding="12" Margin="0,0,0,12">
                                             <CheckBox x:Name="chkAlertAlways" Content="Send alerts 24/7 (ignore schedule below)" FontWeight="SemiBold"/>
+                                        </Border>
+
+                                        <!-- New: All-day option that also ignores lunch and work hours (styled blue) -->
+                                        <Border Background="#E7F3FF" BorderBrush="#0078D4" BorderThickness="1" CornerRadius="4" Padding="12" Margin="0,0,0,12">
+                                            <CheckBox x:Name="chkAllDay" Content="24 Hours (No lunch break) — send alerts all day" FontWeight="SemiBold"/>
                                         </Border>
 
                                         <!-- Days of week -->
@@ -1034,9 +1039,9 @@
                                             <StackPanel>
                                                 <TextBlock Text="Work Hours" FontWeight="SemiBold"/>
                                                 <StackPanel Orientation="Horizontal" Margin="0,8,0,0">
-                                                    <TextBox x:Name="txtWorkStart" Width="80" Text="08:00" Style="{StaticResource ModernTextBox}"/>
+                                                    <TextBox x:Name="txtWorkStart" Width="auto" MaxWidth="100" Text="08:00" Style="{StaticResource ModernTextBox}"/>
                                                     <TextBlock Text="to" VerticalAlignment="Center" Margin="8,0"/>
-                                                    <TextBox x:Name="txtWorkEnd" Width="80" Text="17:00" Style="{StaticResource ModernTextBox}" Margin="8,0,0,0"/>
+                                                    <TextBox x:Name="txtWorkEnd" Width="auto" MaxWidth="100" Text="17:00" Style="{StaticResource ModernTextBox}" Margin="8,0,0,0"/>
                                                 </StackPanel>
                                                 <TextBlock Text="Alerts active during these hours" FontSize="11" Foreground="#605E5C" Margin="0,8,0,0"/>
                                             </StackPanel>
@@ -1047,9 +1052,9 @@
                                             <StackPanel>
                                                 <TextBlock Text="Lunch Break" FontWeight="SemiBold"/>
                                                 <StackPanel Orientation="Horizontal" Margin="0,8,0,0">
-                                                    <TextBox x:Name="txtLunchStart" Width="80" Text="12:00" Style="{StaticResource ModernTextBox}"/>
+                                                    <TextBox x:Name="txtLunchStart" Width="auto" MaxWidth="100" Text="12:00" Style="{StaticResource ModernTextBox}"/>
                                                     <TextBlock Text="to" VerticalAlignment="Center" Margin="8,0"/>
-                                                    <TextBox x:Name="txtLunchEnd" Width="80" Text="13:00" Style="{StaticResource ModernTextBox}" Margin="8,0,0,0"/>
+                                                    <TextBox x:Name="txtLunchEnd" Width="auto" MaxWidth="100" Text="13:00" Style="{StaticResource ModernTextBox}" Margin="8,0,0,0"/>
                                                 </StackPanel>
                                                 <TextBlock Text="Alerts paused during lunch" FontSize="11" Foreground="#605E5C" Margin="0,8,0,0"/>
                                             </StackPanel>
@@ -1063,7 +1068,7 @@
                                             <StackPanel Orientation="Vertical">
                                                 <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
                                                     <TextBlock Text="Send download alerts if no activity for:" VerticalAlignment="Center"/>
-                                                    <TextBox x:Name="txtAlertThreshold" Text="15" Style="{StaticResource ModernTextBox}" Width="80" Margin="12,0,0,0"/>
+                                                    <TextBox x:Name="txtAlertThreshold" Text="15" Style="{StaticResource ModernTextBox}" Width="auto" MaxWidth="100" Margin="12,0,0,0"/>
                                                     <TextBlock Text="minutes" VerticalAlignment="Center" Margin="8,0,0,0"/>
                                                 </StackPanel>
 

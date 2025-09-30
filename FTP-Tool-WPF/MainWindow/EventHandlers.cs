@@ -509,6 +509,19 @@ namespace FTP_Tool
             catch { }
         }
 
+        private void PersistWorkHours()
+        {
+            try
+            {
+                _settings.WorkStart = txtWorkStart.Text.Trim();
+                _settings.WorkEnd = txtWorkEnd.Text.Trim();
+                _settings.LunchStart = txtLunchStart.Text.Trim();
+                _settings.LunchEnd = txtLunchEnd.Text.Trim();
+                var _ = _settings_service.SaveAsync(_settings);
+            }
+            catch { }
+        }
+
         // Ensure LoadRecipientsFromSettings is called during MainWindow_Loaded in WindowLifecycle.cs
     }
 }
