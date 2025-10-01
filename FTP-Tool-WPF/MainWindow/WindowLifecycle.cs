@@ -98,7 +98,7 @@ namespace FTP_Tool
             // Load saved FTP password from credential store (best-effort)
             try
             {
-                var cred = _credentialService.Load(_settings.Host ?? string.Empty, _settings.Username ?? string.Empty);
+                var cred = _credentialService.Load(_settings.Host ?? string.Empty, _settings.Username ?? string.Empty, "ftp");
                 if (cred.HasValue && !string.IsNullOrEmpty(cred.Value.Password)) txtPassword.Password = cred.Value.Password;
             }
             catch (Exception ex)
@@ -116,7 +116,7 @@ namespace FTP_Tool
 
                 try
                 {
-                    var smtpCred = _credentialService.Load(_settings.SmtpHost ?? string.Empty, _settings.SmtpUsername ?? string.Empty);
+                    var smtpCred = _credentialService.Load(_settings.SmtpHost ?? string.Empty, _settings.SmtpUsername ?? string.Empty, "smtp");
                     if (smtpCred.HasValue) txtSmtpPass.Password = smtpCred.Value.Password ?? string.Empty;
                 }
                 catch (Exception ex)
@@ -556,14 +556,18 @@ namespace FTP_Tool
             // Populate saved credentials list (best-effort)
             try
             {
-                var list = _credentialService.ListSavedCredentials();
+                var ftpList = _credentialService.ListSavedCredentials("ftp");
+                var smtpList = _credentialService.ListSavedCredentials("smtp");
                 if (this.FindName("lstSavedCredentials") is System.Windows.Controls.ListBox lb)
                 {
                     lb.Items.Clear();
-                    foreach (var (Category, Host, Username) in list)
+                    foreach (var (Category, Host, Username) in ftpList)
                     {
-                        var label = string.Equals(Category, "smtp", StringComparison.OrdinalIgnoreCase) ? "[SMTP]" : "[FTP]";
-                        lb.Items.Add($"{label} {Host} : {Username}");
+                        lb.Items.Add($"[FTP] {Host} : {Username}");
+                    }
+                    foreach (var (Category, Host, Username) in smtpList)
+                    {
+                        lb.Items.Add($"[SMTP] {Host} : {Username}");
                     }
                 }
             }

@@ -21,9 +21,13 @@ namespace FTP_Tool.Services
             var pass = string.Empty;
             try
             {
-                var cred = _credentialService.Load(_settings.SmtpHost ?? string.Empty, _settings.SmtpUsername ?? string.Empty);
+                // Load SMTP credentials from credential store. The app saves SMTP creds using category "smtp",
+                // so ensure we request that category here instead of the default (which is "ftp").
+                var cred = _credentialService.Load(_settings.SmtpHost ?? string.Empty, _settings.SmtpUsername ?? string.Empty, "smtp");
                 if (cred.HasValue)
                 {
+                    // Use the stored username if settings do not contain one
+                    if (string.IsNullOrEmpty(user)) user = cred.Value.Username ?? string.Empty;
                     pass = cred.Value.Password ?? string.Empty;
                 }
             }
@@ -65,7 +69,8 @@ namespace FTP_Tool.Services
                     await client.ConnectAsync(_settings.SmtpHost, _settings.SmtpPort, SecureSocketOptions.Auto).ConfigureAwait(false);
                 }
 
-                if (!string.IsNullOrEmpty(user))
+                // Only attempt authentication if we have both username and password
+                if (!string.IsNullOrEmpty(user) && !string.IsNullOrEmpty(pass))
                 {
                     await client.AuthenticateAsync(user, pass).ConfigureAwait(false);
                 }
