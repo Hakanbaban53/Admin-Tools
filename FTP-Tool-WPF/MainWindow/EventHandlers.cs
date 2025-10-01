@@ -117,6 +117,26 @@ namespace FTP_Tool
                 });
 
                 await RefreshRemoteFileCount();
+
+                // Save FTP credential when test succeeds (user-initiated save via Test button)
+                try
+                {
+                    _settings.Host = txtHost.Text.Trim();
+                    _settings.Port = int.TryParse(txtPort.Text, out var p) ? p : 21;
+                    _settings.Username = txtUsername.Text.Trim();
+                    // persist settings (best-effort)
+                    _ = _settings_service.SaveAsync(_settings);
+
+                    // Save credential securely
+                    try { _credentialService.Save(_settings.Host ?? string.Empty, _settings.Username ?? string.Empty, txtPassword.Password ?? string.Empty, "ftp"); } catch (Exception ex)
+                    {
+                        Log($"Failed to save FTP credential after successful test: {ex.Message}", LogLevel.Warning);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Log($"Error while saving settings/credential after test: {ex.Message}", LogLevel.Debug);
+                }
             }
             UpdateSidebarStats();
             try { UpdateTray(); } catch { }

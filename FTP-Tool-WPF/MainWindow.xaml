@@ -406,14 +406,18 @@
                                              ToolTip="Remote folder path (e.g., /incoming)"/>
                                             </StackPanel>
 
-                                            <Button x:Name="btnTestConnection" Grid.Column="2" Click="BtnTestConnection_Click" 
-                                        Style="{StaticResource SecondaryButton}" Padding="12,8" Margin="0,20,0,0"
-                                        ToolTip="Test connection to FTP server">
-                                                <StackPanel Orientation="Horizontal">
-                                                    <TextBlock Text="🔗" Margin="0,0,6,0"/>
-                                                    <TextBlock Text="Test"/>
-                                                </StackPanel>
-                                            </Button>
+                                            <!-- Updated: Test button with clearer tooltip and small caption -->
+                                            <StackPanel Grid.Column="2" Margin="0,20,0,0" HorizontalAlignment="Right">
+                                                <Button x:Name="btnTestConnection" Click="BtnTestConnection_Click" 
+                                                Style="{StaticResource SecondaryButton}" Padding="12,8"
+                                                ToolTip="Test connection to FTP server. On success the host, username and password will be saved securely to Windows Credential Manager.">
+                                                    <StackPanel Orientation="Horizontal">
+                                                        <TextBlock Text="🔗" Margin="0,0,6,0"/>
+                                                        <TextBlock Text="Test"/>
+                                                    </StackPanel>
+                                                </Button>
+                                                <TextBlock Text="(Test also saves credentials if it succeeds)" FontSize="11" Foreground="#605E5C" Margin="4,6,0,0" HorizontalAlignment="Center" TextWrapping="Wrap" Width="140" TextAlignment="Center"/>
+                                            </StackPanel>
                                         </Grid>
                                     </StackPanel>
                                 </StackPanel>
