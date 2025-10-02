@@ -4,11 +4,18 @@ using System.Reflection;
 using System.Windows;
 using System.Windows.Controls;
 using System.Threading;
+using System.Linq;
+using System;
+using FTP_Tool.Models;
+using System.Collections.ObjectModel;
 
 namespace FTP_Tool
 {
     public partial class MainWindow
     {
+        private ObservableCollection<IntervalItem> _workShifts = new();
+        private ObservableCollection<IntervalItem> _excludedIntervals = new();
+
         private async void MainWindow_Loaded(object? sender, RoutedEventArgs e)
         {
             // Load settings first
@@ -36,7 +43,7 @@ namespace FTP_Tool
             try
             {
                 _ftpService.ApplyOptions(_settings.ConnectionTimeoutSeconds, _settings.MaxRetryAttempts, _settings.UsePassiveMode);
-                try { _ftpService.Logger = (msg, lvl) => Log(msg, lvl); } catch (Exception ex) { try { Log($"Failed to attach FTP logger: {ex.Message}", LogLevel.Debug); } catch { } }
+                try { _ftpService.Logger = (msg, lvl) => Log(msg, lvl); } catch { }
             }
             catch (Exception ex)
             {
@@ -55,22 +62,17 @@ namespace FTP_Tool
                 chkDeleteAfterDownload.IsChecked = _settings.DeleteAfterDownload;
 
                 chkLogToFile.IsChecked = _settings.LogToFile;
-                try { chkAutoStart.IsChecked = _settings.StartWithWindows; } catch (Exception ex) { try { Log($"Failed to set chkAutoStart: {ex.Message}", LogLevel.Debug); } catch { } }
+                try { chkAutoStart.IsChecked = _settings.StartWithWindows; } catch { }
 
                 try
                 {
                     if (cmbStartupMode != null)
-                    {
                         cmbStartupMode.SelectedIndex = _settings.StartMinimizedOnStartup ? 1 : 0;
-                    }
                 }
-                catch (Exception ex)
-                {
-                    try { Log($"Failed to set startup mode: {ex.Message}", LogLevel.Debug); } catch { }
-                }
+                catch { }
 
                 chkMinimizeToTray.IsChecked = _settings.MinimizeToTray;
-                try { chkStartMonitoringOnLaunch.IsChecked = _settings.StartMonitoringOnLaunch; } catch (Exception ex) { try { Log($"Failed to set StartMonitoringOnLaunch: {ex.Message}", LogLevel.Debug); } catch { } }
+                try { chkStartMonitoringOnLaunch.IsChecked = _settings.StartMonitoringOnLaunch; } catch { }
 
                 // advanced
                 txtConnectionTimeout.Text = _settings.ConnectionTimeoutSeconds.ToString();
@@ -101,12 +103,9 @@ namespace FTP_Tool
                 var cred = _credentialService.Load(_settings.Host ?? string.Empty, _settings.Username ?? string.Empty, "ftp");
                 if (cred.HasValue && !string.IsNullOrEmpty(cred.Value.Password)) txtPassword.Password = cred.Value.Password;
             }
-            catch (Exception ex)
-            {
-                try { Log($"Failed to load saved FTP credential: {ex.Message}", LogLevel.Warning); } catch { }
-            }
+            catch { }
 
-            // Load email related settings
+            // Load email related settings and alert settings FIRST (before wiring handlers)
             try
             {
                 txtSmtpHost.Text = _settings.SmtpHost ?? string.Empty;
@@ -119,13 +118,9 @@ namespace FTP_Tool
                     var smtpCred = _credentialService.Load(_settings.SmtpHost ?? string.Empty, _settings.SmtpUsername ?? string.Empty, "smtp");
                     if (smtpCred.HasValue) txtSmtpPass.Password = smtpCred.Value.Password ?? string.Empty;
                 }
-                catch (Exception ex)
-                {
-                    try { Log($"Failed to load SMTP credential: {ex.Message}", LogLevel.Warning); } catch { }
-                }
+                catch { }
 
                 txtEmailFrom.Text = _settings.EmailFrom ?? string.Empty;
-
                 LoadRecipientsFromSettings();
 
                 // Weekday selections
@@ -140,66 +135,47 @@ namespace FTP_Tool
                     chkSat.IsChecked = days.Contains("Sat");
                     chkSun.IsChecked = days.Contains("Sun");
                 }
-                catch (Exception ex)
-                {
-                    try { Log($"Failed to apply weekday selections: {ex.Message}", LogLevel.Debug); } catch { }
-                }
+                catch { }
 
                 txtWorkStart.Text = _settings.WorkStart ?? "08:00";
                 txtWorkEnd.Text = _settings.WorkEnd ?? "17:00";
                 txtLunchStart.Text = _settings.LunchStart ?? "12:00";
                 txtLunchEnd.Text = _settings.LunchEnd ?? "13:00";
-                // New: all-day checkbox state
-                try { chkAllDay.IsChecked = _settings.AllDay; } catch { }
                 txtAlertThreshold.Text = (_settings.AlertThresholdMinutes > 0 ? _settings.AlertThresholdMinutes : 15).ToString();
 
-                // New email options
-                try
+                // CRITICAL: Load alert states BEFORE ApplyAlertUiState is called
+                // Master alert settings
+                if (chkAlertsEnabled != null) chkAlertsEnabled.IsChecked = _settings.AlertsEnabled;
+                if (chkAlertAlways != null) chkAlertAlways.IsChecked = _settings.AlertAlways;
+                if (chkAllDay != null) chkAllDay.IsChecked = _settings.AllDay;
+                if (chkSendDownloadAlerts != null) chkSendDownloadAlerts.IsChecked = _settings.SendDownloadAlerts;
+
+                // Email type options
+                if (chkEmailInfo != null) chkEmailInfo.IsChecked = _settings.EmailOnInfo;
+                if (chkEmailWarnings != null) chkEmailWarnings.IsChecked = _settings.EmailOnWarnings;
+                if (chkEmailErrors != null) chkEmailErrors.IsChecked = _settings.EmailOnErrors;
+                if (txtEmailSummaryInterval != null) txtEmailSummaryInterval.Text = _settings.EmailSummaryIntervalMinutes.ToString();
+
+                // Multi-shift UI population (load data AND set checkbox state)
+                if (chkUseMultiShift != null) chkUseMultiShift.IsChecked = _settings.UseMultiShiftMode;
+
+                _workShifts = new ObservableCollection<IntervalItem>();
+                if (!string.IsNullOrWhiteSpace(_settings.WorkShifts))
                 {
-                    chkEmailInfo.IsChecked = _settings.EmailOnInfo;
-                    chkEmailWarnings.IsChecked = _settings.EmailOnWarnings;
-                    chkEmailErrors.IsChecked = _settings.EmailOnErrors;
-                    txtEmailSummaryInterval.Text = _settings.EmailSummaryIntervalMinutes.ToString();
-
-                    // new send-download-alerts checkbox
-                    try { chkSendDownloadAlerts.IsChecked = _settings.SendDownloadAlerts; } catch { }
-
-                    // reflect master alerts enabled state
-                    try { chkSendDownloadAlerts.IsEnabled = _settings.AlertsEnabled; } catch { }
-
-                    // enable/disable threshold input based on both master alerts and send-downloads setting
-                    try { txtAlertThreshold.IsEnabled = _settings.AlertsEnabled && _settings.SendDownloadAlerts; } catch { }
+                    var parts = _settings.WorkShifts.Split(new[] { ';', ',' }, StringSplitOptions.RemoveEmptyEntries).Select(s => s.Trim());
+                    foreach (var p in parts) _workShifts.Add(IntervalItem.ParseFromString(p));
                 }
-                catch { }
+                dgWorkShifts.ItemsSource = _workShifts;
 
-                // Alert master switches
-                try
+                _excludedIntervals = new ObservableCollection<IntervalItem>();
+                if (!string.IsNullOrWhiteSpace(_settings.ExcludedIntervals))
                 {
-                    if (chkAlertsEnabled != null) chkAlertsEnabled.IsChecked = _settings.AlertsEnabled;
-                    if (chkAlertAlways != null) chkAlertAlways.IsChecked = _settings.AlertAlways;
-
-                    var alertsEnabled = chkAlertsEnabled?.IsChecked == true;
-                    var alertAlways = chkAlertAlways?.IsChecked == true;
-
-                    if (chkMon != null) chkMon.IsEnabled = alertsEnabled && !alertAlways;
-                    if (chkTue != null) chkTue.IsEnabled = alertsEnabled && !alertAlways;
-                    if (chkWed != null) chkWed.IsEnabled = alertsEnabled && !alertAlways;
-                    if (chkThu != null) chkThu.IsEnabled = alertsEnabled && !alertAlways;
-                    if (chkFri != null) chkFri.IsEnabled = alertsEnabled && !alertAlways;
-                    if (chkSat != null) chkSat.IsEnabled = alertsEnabled && !alertAlways;
-                    if (chkSun != null) chkSun.IsEnabled = alertsEnabled && !alertAlways;
-                    if (txtWorkStart != null) txtWorkStart.IsEnabled = alertsEnabled && !alertAlways;
-                    if (txtWorkEnd != null) txtWorkEnd.IsEnabled = alertsEnabled && !alertAlways;
-                    if (txtLunchStart != null) txtLunchStart.IsEnabled = alertsEnabled && !alertAlways;
-                    if (txtLunchEnd != null) txtLunchEnd.IsEnabled = alertsEnabled && !alertAlways;
-                    if (txtAlertThreshold != null) txtAlertThreshold.IsEnabled = alertsEnabled;
+                    var parts = _settings.ExcludedIntervals.Split(new[] { ';', ',' }, StringSplitOptions.RemoveEmptyEntries).Select(s => s.Trim());
+                    foreach (var p in parts) _excludedIntervals.Add(IntervalItem.ParseFromString(p));
                 }
-                catch { }
+                dgExcluded.ItemsSource = _excludedIntervals;
             }
-            catch (Exception ex)
-            {
-                try { Log($"Error while loading email/settings UI: {ex.Message}", LogLevel.Warning); } catch { }
-            }
+            catch { }
 
             // Wire handlers (only once during load)
             try
@@ -207,42 +183,19 @@ namespace FTP_Tool
                 // Auto start handlers
                 if (chkAutoStart != null)
                 {
-                    chkAutoStart.Checked += (s, ev) =>
-                    {
-                        _settings.StartWithWindows = true;
-                        _ = _settings_service.SaveAsync(_settings);
-                        EnableAutoStart();
-                        try { if (cmbStartupMode != null) cmbStartupMode.IsEnabled = true; } catch { }
-                    };
-
-                    chkAutoStart.Unchecked += (s, ev) =>
-                    {
-                        _settings.StartWithWindows = false;
-                        _ = _settings_service.SaveAsync(_settings);
-                        DisableAutoStart();
-                        try { if (cmbStartupMode != null) cmbStartupMode.IsEnabled = false; } catch { }
-                    };
+                    chkAutoStart.Checked += (s, ev) => { _settings.StartWithWindows = true; _ = _settings_service.SaveAsync(_settings); EnableAutoStart(); try { if (cmbStartupMode != null) cmbStartupMode.IsEnabled = true; } catch { } };
+                    chkAutoStart.Unchecked += (s, ev) => { _settings.StartWithWindows = false; _ = _settings_service.SaveAsync(_settings); DisableAutoStart(); try { if (cmbStartupMode != null) cmbStartupMode.IsEnabled = false; } catch { } };
                 }
 
                 if (cmbStartupMode != null)
                 {
-                    cmbStartupMode.SelectionChanged += (s, ev) =>
-                    {
-                        _settings.StartMinimizedOnStartup = cmbStartupMode.SelectedIndex == 1;
-                        _ = _settings_service.SaveAsync(_settings);
-                        try { if (chkAutoStart?.IsChecked == true) EnableAutoStart(); } catch { }
-                    };
+                    cmbStartupMode.SelectionChanged += (s, ev) => { _settings.StartMinimizedOnStartup = cmbStartupMode.SelectedIndex == 1; _ = _settings_service.SaveAsync(_settings); try { if (chkAutoStart?.IsChecked == true) EnableAutoStart(); } catch { } };
                 }
 
                 chkMinimizeToTray.Checked += (s, ev) => { _settings.MinimizeToTray = true; _ = _settings_service.SaveAsync(_settings); };
                 chkMinimizeToTray.Unchecked += (s, ev) => { _settings.MinimizeToTray = false; _ = _settings_service.SaveAsync(_settings); };
 
-                try
-                {
-                    chkStartMonitoringOnLaunch.Checked += (s, ev) => { _settings.StartMonitoringOnLaunch = true; _ = _settings_service.SaveAsync(_settings); };
-                    chkStartMonitoringOnLaunch.Unchecked += (s, ev) => { _settings.StartMonitoringOnLaunch = false; _ = _settings_service.SaveAsync(_settings); };
-                }
-                catch { }
+                try { chkStartMonitoringOnLaunch.Checked += (s, ev) => { _settings.StartMonitoringOnLaunch = true; _ = _settings_service.SaveAsync(_settings); }; chkStartMonitoringOnLaunch.Unchecked += (s, ev) => { _settings.StartMonitoringOnLaunch = false; _ = _settings_service.SaveAsync(_settings); }; } catch { }
 
                 // Advanced options
                 txtConnectionTimeout.LostFocus += (s, ev) =>
@@ -253,10 +206,7 @@ namespace FTP_Tool
                         _ftpService.ApplyOptions(_settings.ConnectionTimeoutSeconds, _settings.MaxRetryAttempts, _settings.UsePassiveMode);
                         _ = _settings_service.SaveAsync(_settings);
                     }
-                    else
-                    {
-                        txtConnectionTimeout.Text = _settings.ConnectionTimeoutSeconds.ToString();
-                    }
+                    else { txtConnectionTimeout.Text = _settings.ConnectionTimeoutSeconds.ToString(); }
                 };
 
                 txtMaxRetries.LostFocus += (s, ev) =>
@@ -267,10 +217,7 @@ namespace FTP_Tool
                         _ftpService.ApplyOptions(_settings.ConnectionTimeoutSeconds, _settings.MaxRetryAttempts, _settings.UsePassiveMode);
                         _ = _settings_service.SaveAsync(_settings);
                     }
-                    else
-                    {
-                        txtMaxRetries.Text = _settings.MaxRetryAttempts.ToString();
-                    }
+                    else { txtMaxRetries.Text = _settings.MaxRetryAttempts.ToString(); }
                 };
 
                 chkUsePassiveMode.Checked += (s, ev) => { _settings.UsePassiveMode = true; _ftpService.ApplyOptions(_settings.ConnectionTimeoutSeconds, _settings.MaxRetryAttempts, _settings.UsePassiveMode); _ = _settings_service.SaveAsync(_settings); };
@@ -284,10 +231,7 @@ namespace FTP_Tool
                         _logging_service?.ApplySettings(_logFilePath, _settings);
                         _ = _settings_service.SaveAsync(_settings);
                     }
-                    else
-                    {
-                        txtLogRetentionDays.Text = _settings.LogRetentionDays.ToString();
-                    }
+                    else { txtLogRetentionDays.Text = _settings.LogRetentionDays.ToString(); }
                 };
 
                 // Logging handlers
@@ -296,25 +240,12 @@ namespace FTP_Tool
 
                 cmbMinimumLogLevel.SelectionChanged += (s, ev) =>
                 {
-                    if (cmbMinimumLogLevel.SelectedItem is ComboBoxItem selected)
-                    {
-                        _settings.MinimumLogLevel = selected.Content?.ToString() ?? "Info";
-                        _logging_service?.ApplySettings(_logFilePath, _settings);
-                        _ = _settings_service.SaveAsync(_settings);
-                    }
+                    if (cmbMinimumLogLevel.SelectedItem is ComboBoxItem selected) { _settings.MinimumLogLevel = selected.Content?.ToString() ?? "Info"; _logging_service?.ApplySettings(_logFilePath, _settings); _ = _settings_service.SaveAsync(_settings); }
                 };
 
                 txtMaxLogLines.LostFocus += (s, ev) =>
                 {
-                    if (int.TryParse(txtMaxLogLines.Text, out var maxLines))
-                    {
-                        _settings.MaxLogLines = Math.Max(0, maxLines);
-                        _ = _settings_service.SaveAsync(_settings);
-                    }
-                    else
-                    {
-                        txtMaxLogLines.Text = _settings.MaxLogLines.ToString();
-                    }
+                    if (int.TryParse(txtMaxLogLines.Text, out var maxLines)) { _settings.MaxLogLines = Math.Max(0, maxLines); _ = _settings_service.SaveAsync(_settings); } else { txtMaxLogLines.Text = _settings.MaxLogLines.ToString(); }
                 };
 
                 // Credentials list actions
@@ -335,297 +266,150 @@ namespace FTP_Tool
                 if (chkSat != null) { chkSat.Checked += (s, ev) => persist(); chkSat.Unchecked += (s, ev) => persist(); }
                 if (chkSun != null) { chkSun.Checked += (s, ev) => persist(); chkSun.Unchecked += (s, ev) => persist(); }
 
-                // Alerts master switches
-                var alertsEnabledCb = chkAlertsEnabled;
-                var alertAlwaysCb = chkAlertAlways;
-                var sendDownloadCb = chkSendDownloadAlerts;
-                var monCb = chkMon; var tueCb = chkTue; var wedCb = chkWed; var thuCb = chkThu; var friCb = chkFri; var satCb = chkSat; var sunCb = chkSun;
-                var workStartTb = txtWorkStart; var workEndTb = txtWorkEnd; var lunchStartTb = txtLunchStart; var lunchEndTb = txtLunchEnd; var alertThresholdTb = txtAlertThreshold;
-
-                // initialize states
-                if (alertsEnabledCb != null) alertsEnabledCb.IsChecked = _settings.AlertsEnabled;
-                if (alertAlwaysCb != null) alertAlwaysCb.IsChecked = _settings.AlertAlways;
-                if (sendDownloadCb != null) sendDownloadCb.IsChecked = _settings.SendDownloadAlerts;
-                try { if (chkAllDay != null) chkAllDay.IsChecked = _settings.AllDay; } catch { }
-
-                // Apply UI state for alerts and schedule
-                void ApplyAlertUiState()
+                // Wire multi-shift toggle so the UI updates immediately when user changes it
+                try
                 {
-                    var enabled = alertsEnabledCb?.IsChecked == true;
-                    var always = alertAlwaysCb?.IsChecked == true;
-                    var allDay = chkAllDay?.IsChecked == true;
-
-                    if (monCb != null) monCb.IsEnabled = enabled && !always;
-                    if (tueCb != null) tueCb.IsEnabled = enabled && !always;
-                    if (wedCb != null) wedCb.IsEnabled = enabled && !always;
-                    if (thuCb != null) thuCb.IsEnabled = enabled && !always;
-                    if (friCb != null) friCb.IsEnabled = enabled && !always;
-                    if (satCb != null) satCb.IsEnabled = enabled && !always;
-                    if (sunCb != null) sunCb.IsEnabled = enabled && !always;
-
-                    // Disable hours inputs when AllDay or AlertAlways is enabled
-                    var disableHours = allDay || always;
-                    if (workStartTb != null) workStartTb.IsEnabled = enabled && !disableHours;
-                    if (workEndTb != null) workEndTb.IsEnabled = enabled && !disableHours;
-                    if (lunchStartTb != null) lunchStartTb.IsEnabled = enabled && !disableHours;
-                    if (lunchEndTb != null) lunchEndTb.IsEnabled = enabled && !disableHours;
-
-                    if (alertThresholdTb != null) alertThresholdTb.IsEnabled = enabled && (sendDownloadCb?.IsChecked == true);
-
-                    if (sendDownloadCb != null) sendDownloadCb.IsEnabled = enabled;
-                }
-
-                ApplyAlertUiState();
-
-                // Alerts enable/disable handlers
-                if (alertsEnabledCb != null)
-                {
-                    alertsEnabledCb.Checked += (s, ev) => { _settings.AlertsEnabled = true; _ = _settings_service.SaveAsync(_settings); ApplyAlertUiState(); _ = MaybeSendNoDownloadAlertAsync(CancellationToken.None); };
-                    alertsEnabledCb.Unchecked += (s, ev) => { _settings.AlertsEnabled = false; _ = _settings_service.SaveAsync(_settings); ApplyAlertUiState(); };
-                }
-
-                // AlertAlways (7/24) - when checked, clear AllDay and disable hours
-                if (alertAlwaysCb != null)
-                {
-                    alertAlwaysCb.Checked += (s, ev) =>
+                    if (chkUseMultiShift != null)
                     {
-                        // When AlertAlways (7/24) is checked, disable the custom AllDay and hours
-                        _settings.AlertAlways = true;
-                        try
-                        {
-                            if (this.FindName("chkAllDay") is System.Windows.Controls.CheckBox ad) { ad.IsChecked = false; }
-                        }
-                        catch { }
-                        // Ensure alerts master switch is enabled when AlertAlways is checked
-                        try
-                        {
-                            _settings.AlertsEnabled = true;
-                            if (this.FindName("chkAlertsEnabled") is System.Windows.Controls.CheckBox master) master.IsChecked = true;
-                        }
-                        catch { }
-                        _ = _settings_service.SaveAsync(_settings);
-                        ApplyAlertUiState();
-                    };
-                    alertAlwaysCb.Unchecked += (s, ev) => { _settings.AlertAlways = false; _ = _settings_service.SaveAsync(_settings); ApplyAlertUiState(); };
+                        chkUseMultiShift.Checked += (s, ev) => ApplyMultiShiftState(true);
+                        chkUseMultiShift.Unchecked += (s, ev) => ApplyMultiShiftState(false);
+                        // initialize based on current checkbox state (or settings already applied earlier)
+                        ApplyMultiShiftState(chkUseMultiShift.IsChecked == true);
+                    }
                 }
+                catch { }
 
-                // All-day handlers - when checked, clear AlertAlways
-                if (chkAllDay != null)
+                // Note: Add/Edit dialog logic removed. Inline DataGrid editing and RowEditEnding validation are used instead.
+                // Remove buttons are wired via XAML Click handlers to the methods implemented below.
+
+                // Alerts master switches - properly wire the handlers
+                try
                 {
-                    chkAllDay.Checked += (s, ev) =>
+                    // Alerts enable/disable handlers
+                    if (chkAlertsEnabled != null)
                     {
-                        _settings.AllDay = true;
-                        try { if (alertAlwaysCb != null) alertAlwaysCb.IsChecked = false; } catch { }
-                        _ = _settings_service.SaveAsync(_settings);
-                        ApplyAlertUiState();
-                    };
-                    chkAllDay.Unchecked += (s, ev) => { _settings.AllDay = false; _ = _settings_service.SaveAsync(_settings); ApplyAlertUiState(); };
-                }
+                        chkAlertsEnabled.Checked += (s, ev) => { _settings.AlertsEnabled = true; _ = _settings_service.SaveAsync(_settings); ApplyAlertUiState(); _ = MaybeSendNoDownloadAlertAsync(CancellationToken.None); };
+                        chkAlertsEnabled.Unchecked += (s, ev) => { _settings.AlertsEnabled = false; _ = _settings_service.SaveAsync(_settings); ApplyAlertUiState(); };
+                    }
 
-                // Send-downloads checkbox handlers
-                if (sendDownloadCb != null)
-                {
-                    sendDownloadCb.Checked += (s, ev) => { _settings.SendDownloadAlerts = true; _ = _settings_service.SaveAsync(_settings); ApplyAlertUiState(); _ = MaybeSendNoDownloadAlertAsync(CancellationToken.None); };
-                    sendDownloadCb.Unchecked += (s, ev) => { _settings.SendDownloadAlerts = false; _ = _settings_service.SaveAsync(_settings); ApplyAlertUiState(); };
-                }
-
-                // Email option handlers
-                if (chkEmailInfo != null) { chkEmailInfo.Checked += (s, ev) => { _settings.EmailOnInfo = true; _ = _settings_service.SaveAsync(_settings); }; chkEmailInfo.Unchecked += (s, ev) => { _settings.EmailOnInfo = false; _ = _settings_service.SaveAsync(_settings); }; }
-                if (chkEmailWarnings != null) { chkEmailWarnings.Checked += (s, ev) => { _settings.EmailOnWarnings = true; _ = _settings_service.SaveAsync(_settings); }; chkEmailWarnings.Unchecked += (s, ev) => { _settings.EmailOnWarnings = false; _ = _settings_service.SaveAsync(_settings); }; }
-                if (chkEmailErrors != null) { chkEmailErrors.Checked += (s, ev) => { _settings.EmailOnErrors = true; _ = _settings_service.SaveAsync(_settings); }; chkEmailErrors.Unchecked += (s, ev) => { _settings.EmailOnErrors = false; _ = _settings_service.SaveAsync(_settings); }; }
-
-                if (txtEmailSummaryInterval != null)
-                {
-                    txtEmailSummaryInterval.LostFocus += (s, ev) =>
+                    // AlertAlways (7/24) - when checked, clear AllDay and disable hours
+                    if (chkAlertAlways != null)
                     {
-                        if (int.TryParse(txtEmailSummaryInterval.Text, out var val))
+                        chkAlertAlways.Checked += (s, ev) =>
                         {
-                            _settings.EmailSummaryIntervalMinutes = Math.Max(1, val);
+                            _settings.AlertAlways = true;
+                            try { if (chkAllDay != null) chkAllDay.IsChecked = false; } catch { }
+                            try { _settings.AlertsEnabled = true; if (chkAlertsEnabled != null) chkAlertsEnabled.IsChecked = true; } catch { }
                             _ = _settings_service.SaveAsync(_settings);
-                        }
-                        else
-                        {
-                            txtEmailSummaryInterval.Text = _settings.EmailSummaryIntervalMinutes.ToString();
-                        }
-                    };
-                }
+                            ApplyAlertUiState();
+                        };
+                        chkAlertAlways.Unchecked += (s, ev) => { _settings.AlertAlways = false; _ = _settings_service.SaveAsync(_settings); ApplyAlertUiState(); };
+                    }
 
-                // Persist alert threshold on focus loss
-                if (txtAlertThreshold != null)
-                {
-                    txtAlertThreshold.LostFocus += (s, ev) =>
+                    // All-day handlers - when checked, clear AlertAlways
+                    if (chkAllDay != null)
                     {
-                        if (int.TryParse(txtAlertThreshold.Text, out var val))
-                        {
-                            _settings.AlertThresholdMinutes = Math.Max(1, val);
-                            _ = _settings_service.SaveAsync(_settings);
-                        }
-                        else
-                        {
-                            try { txtAlertThreshold.Text = (_settings.AlertThresholdMinutes > 0 ? _settings.AlertThresholdMinutes : 15).ToString(); } catch { }
-                        }
-                    };
-                }
+                        chkAllDay.Checked += (s, ev) => { _settings.AllDay = true; try { if (chkAlertAlways != null) chkAlertAlways.IsChecked = false; } catch { } _ = _settings_service.SaveAsync(_settings); ApplyAlertUiState(); };
+                        chkAllDay.Unchecked += (s, ev) => { _settings.AllDay = false; _ = _settings_service.SaveAsync(_settings); ApplyAlertUiState(); };
+                    }
 
-                // Persist work / lunch times when user edits the textboxes (validate HH:mm)
-                if (txtWorkStart != null)
-                {
-                    txtWorkStart.LostFocus += (s, ev) =>
+                    // Send-downloads checkbox handlers
+                    if (chkSendDownloadAlerts != null)
                     {
-                        try
-                        {
-                            if (TimeSpan.TryParse(txtWorkStart.Text, out var ts))
-                            {
-                                _settings.WorkStart = ts.ToString(@"hh\:mm");
-                                _ = _settings_service.SaveAsync(_settings);
-                            }
-                            else
-                            {
-                                txtWorkStart.Text = _settings.WorkStart ?? "08:00";
-                            }
-                        }
-                        catch { }
-                    };
-                }
+                        chkSendDownloadAlerts.Checked += (s, ev) => { _settings.SendDownloadAlerts = true; _ = _settings_service.SaveAsync(_settings); ApplyAlertUiState(); _ = MaybeSendNoDownloadAlertAsync(CancellationToken.None); };
+                        chkSendDownloadAlerts.Unchecked += (s, ev) => { _settings.SendDownloadAlerts = false; _ = _settings_service.SaveAsync(_settings); ApplyAlertUiState(); };
+                    }
 
-                if (txtWorkEnd != null)
-                {
-                    txtWorkEnd.LostFocus += (s, ev) =>
+                    // Email option handlers
+                    if (chkEmailInfo != null) { chkEmailInfo.Checked += (s, ev) => { _settings.EmailOnInfo = true; _ = _settings_service.SaveAsync(_settings); }; chkEmailInfo.Unchecked += (s, ev) => { _settings.EmailOnInfo = false; _ = _settings_service.SaveAsync(_settings); }; }
+                    if (chkEmailWarnings != null) { chkEmailWarnings.Checked += (s, ev) => { _settings.EmailOnWarnings = true; _ = _settings_service.SaveAsync(_settings); }; chkEmailWarnings.Unchecked += (s, ev) => { _settings.EmailOnWarnings = false; _ = _settings_service.SaveAsync(_settings); }; }
+                    if (chkEmailErrors != null) { chkEmailErrors.Checked += (s, ev) => { _settings.EmailOnErrors = true; _ = _settings_service.SaveAsync(_settings); }; chkEmailErrors.Unchecked += (s, ev) => { _settings.EmailOnErrors = false; _ = _settings_service.SaveAsync(_settings); }; }
+
+                    if (txtEmailSummaryInterval != null)
                     {
-                        try
+                        txtEmailSummaryInterval.LostFocus += (s, ev) =>
                         {
-                            if (TimeSpan.TryParse(txtWorkEnd.Text, out var ts))
-                            {
-                                _settings.WorkEnd = ts.ToString(@"hh\:mm");
-                                _ = _settings_service.SaveAsync(_settings);
-                            }
-                            else
-                            {
-                                txtWorkEnd.Text = _settings.WorkEnd ?? "17:00";
-                            }
-                        }
-                        catch { }
-                    };
-                }
+                            if (int.TryParse(txtEmailSummaryInterval.Text, out var val)) { _settings.EmailSummaryIntervalMinutes = Math.Max(1, val); _ = _settings_service.SaveAsync(_settings); } else { txtEmailSummaryInterval.Text = _settings.EmailSummaryIntervalMinutes.ToString(); }
+                        };
+                    }
 
-                if (txtLunchStart != null)
-                {
-                    txtLunchStart.LostFocus += (s, ev) =>
+                    // Persist alert threshold on focus loss
+                    if (txtAlertThreshold != null)
                     {
-                        try
+                        txtAlertThreshold.LostFocus += (s, ev) =>
                         {
-                            if (TimeSpan.TryParse(txtLunchStart.Text, out var ts))
-                            {
-                                _settings.LunchStart = ts.ToString(@"hh\:mm");
-                                _ = _settings_service.SaveAsync(_settings);
-                            }
-                            else
-                            {
-                                txtLunchStart.Text = _settings.LunchStart ?? "12:00";
-                            }
-                        }
-                        catch { }
-                    };
-                }
+                            if (int.TryParse(txtAlertThreshold.Text, out var val)) { _settings.AlertThresholdMinutes = Math.Max(1, val); _ = _settings_service.SaveAsync(_settings); } else { try { txtAlertThreshold.Text = (_settings.AlertThresholdMinutes > 0 ? _settings.AlertThresholdMinutes : 15).ToString(); } catch { } }
+                        };
+                    }
 
-                if (txtLunchEnd != null)
-                {
-                    txtLunchEnd.LostFocus += (s, ev) =>
+                    // Persist work / lunch times when user edits the textboxes (validate HH:mm)
+                    if (txtWorkStart != null)
                     {
-                        try
-                        {
-                            if (TimeSpan.TryParse(txtLunchEnd.Text, out var ts))
-                            {
-                                _settings.LunchEnd = ts.ToString(@"hh\:mm");
-                                _ = _settings_service.SaveAsync(_settings);
-                            }
-                            else
-                            {
-                                txtLunchEnd.Text = _settings.LunchEnd ?? "13:00";
-                            }
-                        }
-                        catch { }
-                    };
-                }
+                        txtWorkStart.LostFocus += (s, ev) => { try { if (TimeSpan.TryParse(txtWorkStart.Text, out var ts)) { _settings.WorkStart = ts.ToString(@"hh\:mm"); _ = _settings_service.SaveAsync(_settings); } else { txtWorkStart.Text = _settings.WorkStart ?? "08:00"; } } catch { } };
+                    }
 
-                // Final initialization steps
-                ApplyAlertUiState();
+                    if (txtWorkEnd != null)
+                    {
+                        txtWorkEnd.LostFocus += (s, ev) => { try { if (TimeSpan.TryParse(txtWorkEnd.Text, out var ts)) { _settings.WorkEnd = ts.ToString(@"hh\:mm"); _ = _settings_service.SaveAsync(_settings); } else { txtWorkEnd.Text = _settings.WorkEnd ?? "17:00"; } } catch { } };
+                    }
+
+                    if (txtLunchStart != null)
+                    {
+                        txtLunchStart.LostFocus += (s, ev) => { try { if (TimeSpan.TryParse(txtLunchStart.Text, out var ts)) { _settings.LunchStart = ts.ToString(@"hh\:mm"); _ = _settings_service.SaveAsync(_settings); } else { txtLunchStart.Text = _settings.LunchStart ?? "12:00"; } } catch { } };
+                    }
+
+                    if (txtLunchEnd != null)
+                    {
+                        txtLunchEnd.LostFocus += (s, ev) => { try { if (TimeSpan.TryParse(txtLunchEnd.Text, out var ts)) { _settings.LunchEnd = ts.ToString(@"hh\:mm"); _ = _settings_service.SaveAsync(_settings); } else { txtLunchEnd.Text = _settings.LunchEnd ?? "13:00"; } } catch { } };
+                    }
+
+                    // Final initialization step for alerts UI
+                    ApplyAlertUiState();
+                }
+                catch { }
             }
             catch { }
 
-            // Populate saved credentials list (best-effort)
+            // Final initialization steps
             try
             {
+                // Populate saved credentials list (best-effort)
                 var ftpList = _credentialService.ListSavedCredentials("ftp");
                 var smtpList = _credentialService.ListSavedCredentials("smtp");
                 if (this.FindName("lstSavedCredentials") is System.Windows.Controls.ListBox lb)
                 {
                     lb.Items.Clear();
-                    foreach (var (Category, Host, Username) in ftpList)
-                    {
-                        lb.Items.Add($"[FTP] {Host} : {Username}");
-                    }
-                    foreach (var (Category, Host, Username) in smtpList)
-                    {
-                        lb.Items.Add($"[SMTP] {Host} : {Username}");
-                    }
+                    foreach (var item in ftpList) lb.Items.Add($"[FTP] {item.Host} : {item.Username}");
+                    foreach (var item in smtpList) lb.Items.Add($"[SMTP] {item.Host} : {item.Username}");
                 }
-            }
-            catch (Exception ex)
-            {
-                try { Log($"Failed to populate saved credentials: {ex.Message}", LogLevel.Warning); } catch { }
-            }
 
-            // Final initialization steps
-            UpdateResponsiveSidebar();
-            ClearLogIfNeeded();
-            UpdateSidebarStatus(false);
-            UpdateSidebarStats();
+                // Final initialization steps
+                UpdateResponsiveSidebar();
+                ClearLogIfNeeded();
+                UpdateSidebarStatus(false);
+                UpdateSidebarStats();
 
-            // Start log flush timer
-            try
-            {
-                _logFlushTimer = new System.Windows.Threading.DispatcherTimer(System.Windows.Threading.DispatcherPriority.Background)
-                {
-                    Interval = TimeSpan.FromMilliseconds(200)
-                };
+                // Start log flush timer
+                _logFlushTimer = new System.Windows.Threading.DispatcherTimer(System.Windows.Threading.DispatcherPriority.Background) { Interval = TimeSpan.FromMilliseconds(200) };
                 _logFlushTimer.Tick += (s, ev) => FlushPendingLogs();
                 _logFlushTimer.Start();
-            }
-            catch { }
 
-            // Restore last page without animation
-            try
-            {
-                var page = string.IsNullOrWhiteSpace(_settings.LastPage) ? "Monitor" : _settings.LastPage!;
-                ShowPage(page, animate: false);
-            }
-            catch { }
+                // Restore last page without animation
+                try { var page = string.IsNullOrWhiteSpace(_settings.LastPage) ? "Monitor" : _settings.LastPage!; ShowPage(page, animate: false); } catch { }
 
-            _isLoaded = true;
+                _isLoaded = true;
 
-            // Auto-start monitoring if requested and inputs valid
-            try
-            {
-                if (_settings.StartMonitoringOnLaunch && ValidateInputs())
+                // Auto-start monitoring if requested and inputs valid
+                try { if (_settings.StartMonitoringOnLaunch && ValidateInputs()) BtnStart_Click(this, new RoutedEventArgs()); } catch (Exception ex) { Log($"Failed to auto-start monitoring: {ex.Message}", LogLevel.Error); }
+
+                // Handle startup args
+                try
                 {
-                    BtnStart_Click(this, new RoutedEventArgs());
+                    var args = Environment.GetCommandLineArgs();
+                    bool startedFromRun = args.Any(a => string.Equals(a, "--startup", StringComparison.OrdinalIgnoreCase) || string.Equals(a, "/startup", StringComparison.OrdinalIgnoreCase));
+                    if (startedFromRun && _settings.StartMinimizedOnStartup) HideToTray();
                 }
-            }
-            catch (Exception ex)
-            {
-                Log($"Failed to auto-start monitoring: {ex.Message}", LogLevel.Error);
-            }
-
-            // Handle startup args (minimize to tray when launched by Windows)
-            try
-            {
-                var args = Environment.GetCommandLineArgs();
-                bool startedFromRun = args.Any(a => string.Equals(a, "--startup", StringComparison.OrdinalIgnoreCase) || string.Equals(a, "/startup", StringComparison.OrdinalIgnoreCase));
-                if (startedFromRun && _settings.StartMinimizedOnStartup)
-                {
-                    HideToTray();
-                }
+                catch { }
             }
             catch { }
         }
@@ -649,7 +433,6 @@ namespace FTP_Tool
             // save current settings
             try
             {
-                // ensure alert threshold persisted
                 try { _settings.AlertThresholdMinutes = int.TryParse(txtAlertThreshold.Text, out var t) ? Math.Max(1, t) : _settings.AlertThresholdMinutes; } catch { }
 
                 _settings.Host = txtHost.Text.Trim();
@@ -715,17 +498,28 @@ namespace FTP_Tool
                 }
                 catch { }
 
-                if (_settings_service != null) await _settings_service.SaveAsync(_settings);
-
+                // Persist multi-shift and excluded intervals
                 try
                 {
-                    // explicitly save as 'ftp' category
-                    _credentialService.Save(_settings.Host ?? string.Empty, _settings.Username ?? string.Empty, txtPassword.Password ?? string.Empty, "ftp");
+                    try { _settings.UseMultiShiftMode = chkUseMultiShift.IsChecked == true; } catch { }
+
+                    if (_workShifts != null)
+                    {
+                        var items = _workShifts.Select(i => i.IntervalString);
+                        _settings.WorkShifts = string.Join(';', items);
+                    }
+
+                    if (_excludedIntervals != null)
+                    {
+                        var items = _excludedIntervals.Select(i => i.IntervalString);
+                        _settings.ExcludedIntervals = string.Join(';', items);
+                    }
                 }
-                catch (Exception ex)
-                {
-                    try { Log($"Failed to save ftp credential on exit: {ex.Message}", LogLevel.Warning); } catch { }
-                }
+                catch { }
+
+                if (_settings_service != null) await _settings_service.SaveAsync(_settings);
+
+                try { _credentialService.Save(_settings.Host ?? string.Empty, _settings.Username ?? string.Empty, txtPassword.Password ?? string.Empty, "ftp"); } catch { }
             }
             catch { }
 
@@ -749,7 +543,8 @@ namespace FTP_Tool
             // finally close application
             try { System.Windows.Application.Current.Shutdown(); } catch { }
         }
-        private static readonly char[] separatorArray0 = [',', ';'];
+
+        private static readonly char[] separatorArray0 = new[] { ',', ';' };
 
         // Add/Remove Run registry entries to enable start-with-windows
         private void EnableAutoStart()
@@ -771,12 +566,7 @@ namespace FTP_Tool
                     // The app is running as a framework-dependent deployment (dotnet <app>.dll).
                     // Register the host (dotnet) and pass the DLL path so Windows opens the DLL with dotnet.
                     var hostExe = ProcessExecutablePathFallback();
-                    if (string.IsNullOrEmpty(hostExe) || hostExe.EndsWith(".dll", StringComparison.OrdinalIgnoreCase))
-                    {
-                        // If we couldn't find a host path, fall back to 'dotnet' on PATH.
-                        hostExe = "dotnet";
-                    }
-
+                    if (string.IsNullOrEmpty(hostExe) || hostExe.EndsWith(".dll", StringComparison.OrdinalIgnoreCase)) hostExe = "dotnet";
                     value = $"\"{hostExe}\" \"{entryPath}\" {args}";
                 }
                 else
@@ -803,14 +593,158 @@ namespace FTP_Tool
             catch { }
         }
 
-        // Fallback for executable path
         private static string ProcessExecutablePathFallback()
+        {
+            try { return System.Diagnostics.Process.GetCurrentProcess().MainModule?.FileName ?? string.Empty; } catch { return string.Empty; }
+        }
+
+        // XAML Click handlers - ensure these are present for XAML wiring
+        private void BtnRemoveWorkShift_Click(object sender, RoutedEventArgs e) => BtnRemoveWorkShift_Click_Core();
+        private void BtnRemoveExcludedInterval_Click(object sender, RoutedEventArgs e) => BtnRemoveExcludedInterval_Click_Core();
+
+        // Core implementations (used both from dynamic wiring and XAML handlers)
+        private void BtnRemoveWorkShift_Click_Core()
         {
             try
             {
-                return System.Diagnostics.Process.GetCurrentProcess().MainModule?.FileName ?? string.Empty;
+                if (dgWorkShifts.SelectedItem is IntervalItem it)
+                {
+                    _workShifts.Remove(it);
+                    PersistWorkShifts();
+                }
             }
-            catch { return string.Empty; }
+            catch (Exception ex) { Log($"RemoveWorkShift error: {ex.Message}", LogLevel.Debug); }
+        }
+
+        private void BtnRemoveExcludedInterval_Click_Core()
+        {
+            try
+            {
+                if (dgExcluded.SelectedItem is IntervalItem it)
+                {
+                    _excludedIntervals.Remove(it);
+                    PersistExcludedIntervals();
+                }
+            }
+            catch (Exception ex) { Log($"RemoveExcludedInterval error: {ex.Message}", LogLevel.Debug); }
+        }
+
+        // RowEditEnding handlers for inline validation and persistence
+        private void DgWorkShifts_RowEditEnding(object? sender, DataGridRowEditEndingEventArgs e)
+        {
+            if (e.EditAction != DataGridEditAction.Commit) return;
+            Dispatcher.BeginInvoke(new Action(() =>
+            {
+                if (e.Row.Item is IntervalItem item)
+                {
+                    if (!item.IsValid())
+                    {
+                        System.Windows.MessageBox.Show("Invalid interval. Please use HH:mm format for start and end.", "Validation", MessageBoxButton.OK, MessageBoxImage.Warning);
+                        return;
+                    }
+                    if (string.IsNullOrWhiteSpace(item.Start) && string.IsNullOrWhiteSpace(item.End))
+                    {
+                        _workShifts.Remove(item);
+                    }
+                    PersistWorkShifts();
+                }
+            }));
+        }
+
+        private void DgExcluded_RowEditEnding(object? sender, DataGridRowEditEndingEventArgs e)
+        {
+            if (e.EditAction != DataGridEditAction.Commit) return;
+            Dispatcher.BeginInvoke(new Action(() =>
+            {
+                if (e.Row.Item is IntervalItem item)
+                {
+                    if (!item.IsValid())
+                    {
+                        System.Windows.MessageBox.Show("Invalid interval. Please use HH:mm format for start and end.", "Validation", MessageBoxButton.OK, MessageBoxImage.Warning);
+                        return;
+                    }
+                    if (string.IsNullOrWhiteSpace(item.Start) && string.IsNullOrWhiteSpace(item.End))
+                    {
+                        _excludedIntervals.Remove(item);
+                    }
+                    PersistExcludedIntervals();
+                }
+            }));
+        }
+
+        // Persist helpers
+        private void PersistWorkShifts()
+        {
+            try
+            {
+                var items = _workShifts.Select(i => i.IntervalString);
+                _settings.WorkShifts = string.Join(';', items);
+                _ = _settings_service.SaveAsync(_settings);
+            }
+            catch { }
+        }
+
+        private void PersistExcludedIntervals()
+        {
+            try
+            {
+                var items = _excludedIntervals.Select(i => i.IntervalString);
+                _settings.ExcludedIntervals = string.Join(';', items);
+                _ = _settings_service.SaveAsync(_settings);
+            }
+            catch { }
+        }
+
+        private void ApplyMultiShiftState(bool useMulti)
+        {
+            try
+            {
+                // Hide or disable single-period inputs when multi-shift active
+                if (brdWorkHours != null) brdWorkHours.Visibility = useMulti ? Visibility.Collapsed : Visibility.Visible;
+                if (brdLunchBreak != null) brdLunchBreak.Visibility = useMulti ? Visibility.Collapsed : Visibility.Visible;
+
+                // Save setting
+                try { _settings.UseMultiShiftMode = useMulti; _ = _settings_service.SaveAsync(_settings); } catch { }
+                
+                // Apply alert UI state after multi-shift state change to ensure proper enabling/disabling
+                ApplyAlertUiState();
+            }
+            catch { }
+        }
+
+        // Add ApplyAlertUiState method that properly manages the enabled/disabled state of controls
+        private void ApplyAlertUiState()
+        {
+            try
+            {
+                var enabled = chkAlertsEnabled?.IsChecked == true;
+                var always = chkAlertAlways?.IsChecked == true;
+                var allDay = chkAllDay?.IsChecked == true;
+                var useMultiShift = chkUseMultiShift?.IsChecked == true;
+
+                // Weekday checkboxes - disabled when AlertAlways is on
+                if (chkMon != null) chkMon.IsEnabled = enabled && !always;
+                if (chkTue != null) chkTue.IsEnabled = enabled && !always;
+                if (chkWed != null) chkWed.IsEnabled = enabled && !always;
+                if (chkThu != null) chkThu.IsEnabled = enabled && !always;
+                if (chkFri != null) chkFri.IsEnabled = enabled && !always;
+                if (chkSat != null) chkSat.IsEnabled = enabled && !always;
+                if (chkSun != null) chkSun.IsEnabled = enabled && !always;
+
+                // Hour inputs - disabled when AllDay, AlertAlways, or UseMultiShift is enabled
+                var disableHours = allDay || always || useMultiShift;
+                if (txtWorkStart != null) txtWorkStart.IsEnabled = enabled && !disableHours;
+                if (txtWorkEnd != null) txtWorkEnd.IsEnabled = enabled && !disableHours;
+                if (txtLunchStart != null) txtLunchStart.IsEnabled = enabled && !disableHours;
+                if (txtLunchEnd != null) txtLunchEnd.IsEnabled = enabled && !disableHours;
+
+                // Send-download checkbox - enabled when alerts are enabled
+                if (chkSendDownloadAlerts != null) chkSendDownloadAlerts.IsEnabled = enabled;
+
+                // Threshold textbox - enabled only when alerts enabled AND send-downloads checked
+                if (txtAlertThreshold != null) txtAlertThreshold.IsEnabled = enabled && (chkSendDownloadAlerts?.IsChecked == true);
+            }
+            catch { }
         }
     }
 }

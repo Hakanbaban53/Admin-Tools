@@ -75,7 +75,7 @@ namespace FTP_Tool.Models
         // Comma separated list of enabled weekdays (e.g. "Mon,Tue,Wed") -- or empty for none
         public string AlertWeekdays { get; set; } = "Mon,Tue,Wed,Thu,Fri";
 
-        // Work hours and lunch interval stored as HH:mm strings
+        // Work hours and lunch interval stored as HH:mm strings (legacy - single shift)
         public string WorkStart { get; set; } = "08:00";
         public string WorkEnd { get; set; } = "17:00";
         public string LunchStart { get; set; } = "12:00";
@@ -95,5 +95,17 @@ namespace FTP_Tool.Models
 
         // Whether to actually send download/no-activity alert emails when threshold is reached
         public bool SendDownloadAlerts { get; set; } = true;
+
+        // --- Multi-Shift 24-Hour Support ---
+        // When true, use WorkShifts instead of single WorkStart/WorkEnd + LunchStart/LunchEnd
+        public bool UseMultiShiftMode { get; set; } = false;
+
+        // Comma/semicolon-separated list of daily excluded/break intervals in the form "HH:mm-HH:mm".
+        // Example: "12:00-13:00;15:00-15:15" for lunch and afternoon break
+        public string ExcludedIntervals { get; set; } = string.Empty;
+
+        // Semicolon-separated list of work shift intervals in the form "HH:mm-HH:mm".
+        // Example for 3 shifts: "00:00-08:00;08:00-16:00;16:00-00:00"
+        public string WorkShifts { get; set; } = string.Empty;
     }
 }

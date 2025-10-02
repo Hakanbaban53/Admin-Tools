@@ -223,6 +223,34 @@
             <Setter Property="Margin" Value="0,0,0,24"/>
         </Style>
 
+        <!-- Validation error template for showing red border around invalid editing control -->
+        <ControlTemplate x:Key="ValidationErrorTemplate">
+            <Border BorderBrush="Red" BorderThickness="2" CornerRadius="3">
+                <AdornedElementPlaceholder/>
+            </Border>
+        </ControlTemplate>
+
+        <!-- Editing TextBox style used inside DataGrid to show red border and tooltip when invalid -->
+        <Style x:Key="DataGridTextBoxEditingStyle" TargetType="TextBox">
+            <Setter Property="Validation.ErrorTemplate" Value="{StaticResource ValidationErrorTemplate}"/>
+            <Style.Triggers>
+                <Trigger Property="Validation.HasError" Value="True">
+                    <Setter Property="ToolTip" Value="{Binding RelativeSource={RelativeSource Self}, Path=(Validation.Errors)[0].ErrorContent}"/>
+                    <Setter Property="BorderBrush" Value="Red"/>
+                    <Setter Property="BorderThickness" Value="2"/>
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+
+        <!-- Ensure DataGridCells show validation tooltip when the cell has errors -->
+        <Style TargetType="DataGridCell">
+            <Style.Triggers>
+                <Trigger Property="Validation.HasError" Value="True">
+                    <Setter Property="ToolTip" Value="{Binding RelativeSource={RelativeSource Self}, Path=(Validation.Errors)[0].ErrorContent}"/>
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+
         <!-- Log entry DataTemplate -->
         <DataTemplate x:Key="LogEntryTemplate">
             <TextBlock Text="{Binding Formatted}" TextWrapping="Wrap">
@@ -1039,7 +1067,7 @@
                                         </Grid.ColumnDefinitions>
 
                                         <!-- Work Hours -->
-                                        <Border Grid.Row="0" Grid.Column="0" Background="#F8F9FA" CornerRadius="4" Padding="16">
+                                        <Border x:Name="brdWorkHours" Grid.Row="0" Grid.Column="0" Background="#F8F9FA" CornerRadius="4" Padding="16">
                                             <StackPanel>
                                                 <TextBlock Text="Work Hours" FontWeight="SemiBold"/>
                                                 <StackPanel Orientation="Horizontal" Margin="0,8,0,0">
@@ -1052,7 +1080,7 @@
                                         </Border>
 
                                         <!-- Lunch Break -->
-                                        <Border Grid.Row="0" Grid.Column="2" Background="#F8F9FA" CornerRadius="4" Padding="16">
+                                        <Border x:Name="brdLunchBreak" Grid.Row="0" Grid.Column="2" Background="#F8F9FA" CornerRadius="4" Padding="16">
                                             <StackPanel>
                                                 <TextBlock Text="Lunch Break" FontWeight="SemiBold"/>
                                                 <StackPanel Orientation="Horizontal" Margin="0,8,0,0">
@@ -1063,6 +1091,86 @@
                                                 <TextBlock Text="Alerts paused during lunch" FontSize="11" Foreground="#605E5C" Margin="0,8,0,0"/>
                                             </StackPanel>
                                         </Border>
+
+                                        <!-- New: Multi-shift and Excluded Intervals Controls (spans full width) -->
+                                        <Border Grid.Row="1" Grid.ColumnSpan="3" Background="#F8F9FA" CornerRadius="4" Padding="16" Margin="0,12,0,0">
+                                            <StackPanel>
+                                                <TextBlock Text="Advanced Schedule (24-hour / Multi-shift)" FontWeight="SemiBold"/>
+                                                <TextBlock Text="Configure multiple shifts or excluded break intervals. Use format HH:mm-HH:mm (e.g., 22:00-06:00)." FontSize="12" Foreground="#605E5C" Margin="0,8,0,12"/>
+
+                                                <StackPanel Orientation="Horizontal" Margin="0,0,0,12" VerticalAlignment="Center">
+                                                    <CheckBox x:Name="chkUseMultiShift" Content="Use multi-shift mode" FontSize="14" ToolTip="Enable to use the Work Shifts table instead of the single Work Hours fields."/>
+                                                    <TextBlock Text=" " Width="12"/>
+                                                    <TextBlock Text="(When enabled, Work Hours and Lunch inputs are ignored)" FontSize="12" Foreground="#605E5C" VerticalAlignment="Center"/>
+                                                </StackPanel>
+
+                                                <Grid>
+                                                    <Grid.ColumnDefinitions>
+                                                        <ColumnDefinition Width="1*"/>
+                                                        <ColumnDefinition Width="20"/>
+                                                        <ColumnDefinition Width="1*"/>
+                                                    </Grid.ColumnDefinitions>
+
+                                                    <!-- Work Shifts DataGrid -->
+                                                    <StackPanel Grid.Column="0">
+                                                        <TextBlock Text="Work Shifts" FontWeight="SemiBold"/>
+                                                        <TextBlock Text="Define active shift intervals (supports overnight)." FontSize="11" Foreground="#605E5C" Margin="0,4,0,8"/>
+
+                                                        <DataGrid x:Name="dgWorkShifts" AutoGenerateColumns="False" CanUserAddRows="True" CanUserDeleteRows="True" HeadersVisibility="Column" Height="160"
+                                                                  IsReadOnly="False" GridLinesVisibility="None" RowHeaderWidth="0"
+                                                                  VirtualizingPanel.IsVirtualizing="True" VirtualizingPanel.VirtualizationMode="Recycling"
+                                                                  RowEditEnding="DgWorkShifts_RowEditEnding">
+                                                            <DataGrid.Columns>
+                                                                <DataGridTextColumn Header="Start" Binding="{Binding Start, UpdateSourceTrigger=PropertyChanged, ValidatesOnDataErrors=True, NotifyOnValidationError=True}" Width="*">
+                                                                    <DataGridTextColumn.EditingElementStyle>
+                                                                        <Style TargetType="TextBox" BasedOn="{StaticResource DataGridTextBoxEditingStyle}"/>
+                                                                    </DataGridTextColumn.EditingElementStyle>
+                                                                </DataGridTextColumn>
+                                                                <DataGridTextColumn Header="End" Binding="{Binding End, UpdateSourceTrigger=PropertyChanged, ValidatesOnDataErrors=True, NotifyOnValidationError=True}" Width="*">
+                                                                    <DataGridTextColumn.EditingElementStyle>
+                                                                        <Style TargetType="TextBox" BasedOn="{StaticResource DataGridTextBoxEditingStyle}"/>
+                                                                    </DataGridTextColumn.EditingElementStyle>
+                                                                </DataGridTextColumn>
+                                                            </DataGrid.Columns>
+                                                        </DataGrid>
+
+                                                        <StackPanel Orientation="Horizontal" Margin="0,8,0,0">
+                                                            <Button x:Name="btnRemoveWorkShift" Click="BtnRemoveWorkShift_Click" Style="{StaticResource DangerButton}">Remove</Button>
+                                                        </StackPanel>
+                                                    </StackPanel>
+
+                                                    <!-- Excluded Intervals DataGrid -->
+                                                    <StackPanel Grid.Column="2">
+                                                        <TextBlock Text="Excluded / Break Intervals" FontWeight="SemiBold"/>
+                                                        <TextBlock Text="Times during which alerts should be suppressed each day." FontSize="11" Foreground="#605E5C" Margin="0,4,0,8"/>
+
+                                                        <DataGrid x:Name="dgExcluded" AutoGenerateColumns="False" CanUserAddRows="True" CanUserDeleteRows="True" HeadersVisibility="Column" Height="160"
+                                                                  IsReadOnly="False" GridLinesVisibility="None" RowHeaderWidth="0"
+                                                                  VirtualizingPanel.IsVirtualizing="True" VirtualizingPanel.VirtualizationMode="Recycling"
+                                                                  RowEditEnding="DgExcluded_RowEditEnding">
+                                                            <DataGrid.Columns>
+                                                                <DataGridTextColumn Header="Start" Binding="{Binding Start, UpdateSourceTrigger=PropertyChanged, ValidatesOnDataErrors=True, NotifyOnValidationError=True}" Width="*">
+                                                                    <DataGridTextColumn.EditingElementStyle>
+                                                                        <Style TargetType="TextBox" BasedOn="{StaticResource DataGridTextBoxEditingStyle}"/>
+                                                                    </DataGridTextColumn.EditingElementStyle>
+                                                                </DataGridTextColumn>
+                                                                <DataGridTextColumn Header="End" Binding="{Binding End, UpdateSourceTrigger=PropertyChanged, ValidatesOnDataErrors=True, NotifyOnValidationError=True}" Width="*">
+                                                                    <DataGridTextColumn.EditingElementStyle>
+                                                                        <Style TargetType="TextBox" BasedOn="{StaticResource DataGridTextBoxEditingStyle}"/>
+                                                                    </DataGridTextColumn.EditingElementStyle>
+                                                                </DataGridTextColumn>
+                                                            </DataGrid.Columns>
+                                                        </DataGrid>
+
+                                                        <StackPanel Orientation="Horizontal" Margin="0,8,0,0">
+                                                            <Button x:Name="btnRemoveExcludedInterval" Click="BtnRemoveExcludedInterval_Click" Style="{StaticResource DangerButton}">Remove</Button>
+                                                        </StackPanel>
+                                                    </StackPanel>
+
+                                                </Grid>
+                                            </StackPanel>
+                                        </Border>
+
                                     </Grid>
 
                                     <!-- Alert Threshold -->

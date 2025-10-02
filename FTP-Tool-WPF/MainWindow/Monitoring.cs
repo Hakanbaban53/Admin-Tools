@@ -1,4 +1,6 @@
 using System.Diagnostics;
+using System.Linq;
+using System.Collections.Generic;
 
 namespace FTP_Tool
 {
@@ -319,26 +321,104 @@ namespace FTP_Tool
             // If AllDay is enabled, we honor the selected weekdays but ignore work hours / lunch
             if (_settings.AllDay)
             {
+                // Still respect daily excluded intervals if provided
+                return !IsInExcludedIntervals(now.TimeOfDay, _settings.ExcludedIntervals);
+            }
+
+            // Parse excluded intervals once
+            var excludedIntervals = ParseIntervals(_settings.ExcludedIntervals);
+
+            // Multi-shift mode: check the configured shifts
+            if (_settings.UseMultiShiftMode && !string.IsNullOrWhiteSpace(_settings.WorkShifts))
+            {
+                var shifts = ParseIntervals(_settings.WorkShifts);
+                var t = now.TimeOfDay;
+
+                // If any shift contains the current time and it's not inside an excluded interval, allow alerts
+                var inAnyShift = shifts.Any(si => IsTimeInInterval(t, si.start, si.end));
+                if (!inAnyShift) return false;
+
+                if (excludedIntervals != null && excludedIntervals.Count > 0)
+                {
+                    if (IsInExcludedIntervals(t, _settings.ExcludedIntervals)) return false;
+                }
+
                 return true;
             }
 
-            // Check work hours
+            // Legacy single-shift logic
             if (TimeSpan.TryParse(_settings.WorkStart ?? "08:00", out var workStart) &&
                 TimeSpan.TryParse(_settings.WorkEnd ?? "17:00", out var workEnd))
             {
                 var t = now.TimeOfDay;
-                var inWork = t >= workStart && t <= workEnd;
+                var inWork = IsTimeInInterval(t, workStart, workEnd);
                 if (!inWork) return false;
+
+                // If excluded intervals contain now, block alerts
+                if (excludedIntervals != null && excludedIntervals.Count > 0)
+                {
+                    if (IsInExcludedIntervals(t, _settings.ExcludedIntervals)) return false;
+                }
 
                 // Check lunch break
                 if (TimeSpan.TryParse(_settings.LunchStart ?? "12:00", out var lunchStart) &&
                     TimeSpan.TryParse(_settings.LunchEnd ?? "13:00", out var lunchEnd))
                 {
-                    var inLunch = t >= lunchStart && t <= lunchEnd;
-                    if (inLunch) return false;
+                    if (IsTimeInInterval(t, lunchStart, lunchEnd)) return false;
                 }
             }
             return true;
+        }
+
+        // Helper: parse a semicolon/comma-separated list of HH:mm-HH:mm into list of intervals
+        private static List<(TimeSpan start, TimeSpan end)> ParseIntervals(string? input)
+        {
+            var result = new List<(TimeSpan, TimeSpan)>();
+            if (string.IsNullOrWhiteSpace(input)) return result;
+
+            var parts = input.Split(new[] { ';', ',' }, StringSplitOptions.RemoveEmptyEntries);
+            foreach (var part in parts.Select(p => p.Trim()))
+            {
+                if (string.IsNullOrWhiteSpace(part)) continue;
+                var range = part.Split('-', StringSplitOptions.RemoveEmptyEntries).Select(s => s.Trim()).ToArray();
+                if (range.Length != 2) continue;
+                if (TimeSpan.TryParse(range[0], out var s) && TimeSpan.TryParse(range[1], out var e))
+                {
+                    result.Add((s, e));
+                }
+            }
+            return result;
+        }
+
+        // Helper: check if a time is inside interval [start, end]. Supports overnight intervals (end <= start).
+        private static bool IsTimeInInterval(TimeSpan time, TimeSpan start, TimeSpan end)
+        {
+            if (start == end)
+            {
+                // treat as full-day if both equal
+                return true;
+            }
+            if (start < end)
+            {
+                return time >= start && time <= end;
+            }
+            else
+            {
+                // overnight interval, e.g., 22:00-06:00
+                return time >= start || time <= end;
+            }
+        }
+
+        // Helper: check excluded intervals string quickly
+        private static bool IsInExcludedIntervals(TimeSpan time, string? excludedIntervals)
+        {
+            if (string.IsNullOrWhiteSpace(excludedIntervals)) return false;
+            var intervals = ParseIntervals(excludedIntervals);
+            foreach (var (start, end) in intervals)
+            {
+                if (IsTimeInInterval(time, start, end)) return true;
+            }
+            return false;
         }
 
         private void StopMonitoring(string message)
