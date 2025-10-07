@@ -149,6 +149,7 @@ namespace FTP_Tool
                 if (chkAlertAlways != null) chkAlertAlways.IsChecked = _settings.AlertAlways;
                 if (chkAllDay != null) chkAllDay.IsChecked = _settings.AllDay;
                 if (chkSendDownloadAlerts != null) chkSendDownloadAlerts.IsChecked = _settings.SendDownloadAlerts;
+                if (chkSendAlertsWhenNotMonitoring != null) chkSendAlertsWhenNotMonitoring.IsChecked = _settings.SendAlertsWhenNotMonitoring;
 
                 // Email type options
                 if (chkEmailInfo != null) chkEmailInfo.IsChecked = _settings.EmailOnInfo;
@@ -320,6 +321,33 @@ namespace FTP_Tool
                         chkSendDownloadAlerts.Unchecked += (s, ev) => { _settings.SendDownloadAlerts = false; _ = _settings_service.SaveAsync(_settings); ApplyAlertUiState(); };
                     }
 
+                    // Send alerts when not monitoring handlers
+                    if (chkSendAlertsWhenNotMonitoring != null)
+                    {
+                        chkSendAlertsWhenNotMonitoring.Checked += (s, ev) => 
+                        { 
+                            _settings.SendAlertsWhenNotMonitoring = true; 
+                            _ = _settings_service.SaveAsync(_settings);
+                            // Start the background alert timer
+                            if (_alertTimer != null && !_alertTimer.IsEnabled)
+                            {
+                                _alertTimer.Start();
+                                Log("Background alert timer started (alerts enabled when not monitoring)", LogLevel.Info);
+                            }
+                        };
+                        chkSendAlertsWhenNotMonitoring.Unchecked += (s, ev) => 
+                        { 
+                            _settings.SendAlertsWhenNotMonitoring = false; 
+                            _ = _settings_service.SaveAsync(_settings);
+                            // Stop the background alert timer
+                            if (_alertTimer != null && _alertTimer.IsEnabled)
+                            {
+                                _alertTimer.Stop();
+                                Log("Background alert timer stopped", LogLevel.Info);
+                            }
+                        };
+                    }
+				
                     // Email option handlers
                     if (chkEmailInfo != null) { chkEmailInfo.Checked += (s, ev) => { _settings.EmailOnInfo = true; _ = _settings_service.SaveAsync(_settings); }; chkEmailInfo.Unchecked += (s, ev) => { _settings.EmailOnInfo = false; _ = _settings_service.SaveAsync(_settings); }; }
                     if (chkEmailWarnings != null) { chkEmailWarnings.Checked += (s, ev) => { _settings.EmailOnWarnings = true; _ = _settings_service.SaveAsync(_settings); }; chkEmailWarnings.Unchecked += (s, ev) => { _settings.EmailOnWarnings = false; _ = _settings_service.SaveAsync(_settings); }; }
@@ -393,6 +421,31 @@ namespace FTP_Tool
                 _logFlushTimer = new System.Windows.Threading.DispatcherTimer(System.Windows.Threading.DispatcherPriority.Background) { Interval = TimeSpan.FromMilliseconds(200) };
                 _logFlushTimer.Tick += (s, ev) => FlushPendingLogs();
                 _logFlushTimer.Start();
+                
+                // Initialize background alert timer (checks every minute)
+                _alertTimer = new System.Windows.Threading.DispatcherTimer(System.Windows.Threading.DispatcherPriority.Background) { Interval = TimeSpan.FromMinutes(1) };
+                _alertTimer.Tick += async (s, ev) =>
+                {
+                    try
+                    {
+                        // Only run if SendAlertsWhenNotMonitoring is enabled and monitoring is NOT active
+                        if (_settings?.SendAlertsWhenNotMonitoring == true && !IsMonitoringActive)
+                        {
+                            await MaybeSendNoDownloadAlertAsync(CancellationToken.None);
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        Log($"Alert timer error: {ex.Message}", LogLevel.Debug);
+                    }
+                };
+                
+                // Start the alert timer if the setting is enabled
+                if (_settings?.SendAlertsWhenNotMonitoring == true)
+                {
+                    _alertTimer.Start();
+                    Log("Background alert timer started (monitoring not required for alerts)", LogLevel.Info);
+                }
 
                 // Restore last page without animation
                 try { var page = string.IsNullOrWhiteSpace(_settings.LastPage) ? "Monitor" : _settings.LastPage!; ShowPage(page, animate: false); } catch { }
@@ -480,6 +533,7 @@ namespace FTP_Tool
 
                 // ensure send-downloads persisted
                 try { _settings.SendDownloadAlerts = chkSendDownloadAlerts.IsChecked == true; } catch { }
+                try { _settings.SendAlertsWhenNotMonitoring = chkSendAlertsWhenNotMonitoring.IsChecked == true; } catch { }
 
                 // persist new email options
                 try { _settings.EmailOnInfo = chkEmailInfo.IsChecked == true; } catch { }
@@ -525,6 +579,9 @@ namespace FTP_Tool
 
             // stop log flush timer
             try { if (_logFlushTimer != null) { _logFlushTimer.Stop(); _logFlushTimer = null; } } catch { }
+            
+            // stop alert timer
+            try { if (_alertTimer != null) { _alertTimer.Stop(); _alertTimer = null; } } catch { }
 
             // Dispose ftp service when application is closing
             try { _ftpService?.Dispose(); } catch { }

@@ -1,6 +1,8 @@
 using System.Diagnostics;
 using System.Linq;
 using System.Collections.Generic;
+using System.Threading.Tasks;
+using System.Threading;
 
 namespace FTP_Tool
 {
@@ -11,67 +13,12 @@ namespace FTP_Tool
         private DateTime _monitoringStartedAt = DateTime.MinValue;
         // Track when we last sent an alert
         private DateTime _lastAlertSent = DateTime.MinValue;
-
-        private async Task StartMonitoringLoopAsync(int seconds, CancellationToken token)
-        {
-            if (seconds <= 0) seconds = 30;
-            try
-            {
-                // mark monitoring start
-                _monitoringStartedAt = DateTime.Now;
-
-                try
-                {
-                    if (token.IsCancellationRequested) return;
-                    Log("Scheduled check starting...", LogLevel.Info);
-                    await DownloadOnceAsync(token, "Scheduled");
-                    Log("Scheduled check finished.", LogLevel.Info);
-
-                    // check alerts after the run
-                    try { await MaybeSendNoDownloadAlertAsync(token); } catch { }
-                }
-                catch (OperationCanceledException)
-                {
-                    Log("Scheduled check cancelled.", LogLevel.Warning);
-                }
-                catch (Exception ex)
-                {
-                    Log($"Scheduled check error: {ex.Message}", LogLevel.Error);
-                }
-
-                using var pt = new PeriodicTimer(TimeSpan.FromSeconds(seconds));
-                while (await pt.WaitForNextTickAsync(token))
-                {
-                    try
-                    {
-                        if (token.IsCancellationRequested) break;
-                        Log("Scheduled check starting...", LogLevel.Info);
-                        await DownloadOnceAsync(token, "Scheduled");
-                        Log("Scheduled check finished.", LogLevel.Info);
-
-                        // check alerts after the run
-                        try { await MaybeSendNoDownloadAlertAsync(token); } catch { }
-                    }
-                    catch (OperationCanceledException)
-                    {
-                        Log("Scheduled check cancelled.", LogLevel.Warning);
-                        break;
-                    }
-                    catch (Exception ex)
-                    {
-                        Log($"Scheduled check error: {ex.Message}", LogLevel.Error);
-                    }
-                }
-            }
-            catch (OperationCanceledException)
-            {
-                Log("Monitoring loop cancelled.", LogLevel.Warning);
-            }
-            catch (Exception ex)
-            {
-                Log($"Monitoring loop error: {ex.Message}", LogLevel.Error);
-            }
-        }
+        
+        // Background alert timer for sending alerts when monitoring is not running
+        private System.Windows.Threading.DispatcherTimer? _alertTimer;
+        
+        // Property to check if monitoring is currently active
+        private bool IsMonitoringActive => _monitoringTask != null && !_monitoringTask.IsCompleted;
 
         private async Task<bool> DownloadOnceAsync(CancellationToken token, string source = "Manual")
         {
@@ -79,10 +26,36 @@ namespace FTP_Tool
             var sw = Stopwatch.StartNew();
             int totalEntries = 0, fileCount = 0, dirCount = 0, downloaded = 0, skipped = 0, errors = 0;
 
-            string host = Dispatcher.Invoke(() => txtHost.Text.Trim());
-            string portText = Dispatcher.Invoke(() => txtPort.Text);
-            string remoteFolderText = Dispatcher.Invoke(() => txtRemoteFolder.Text);
-            string localFolderText = Dispatcher.Invoke(() => txtLocalFolder.Text);
+            // Read UI inputs once at start to avoid repeated Dispatcher calls
+            string host, portText, remoteFolderText, localFolderText;
+            bool deleteAfter;
+
+            try
+            {
+                // Use InvokeAsync and await so we don't block the background thread on UI operations
+                var hostOp = Dispatcher.InvokeAsync(() => txtHost.Text.Trim());
+                var portOp = Dispatcher.InvokeAsync(() => txtPort.Text);
+                var remoteOp = Dispatcher.InvokeAsync(() => txtRemoteFolder.Text);
+                var localOp = Dispatcher.InvokeAsync(() => txtLocalFolder.Text);
+                var delOp = Dispatcher.InvokeAsync(() => chkDeleteAfterDownload.IsChecked == true);
+
+                await Task.WhenAll(hostOp.Task, portOp.Task, remoteOp.Task, localOp.Task, delOp.Task).ConfigureAwait(false);
+
+                host = hostOp.Task.Result;
+                portText = portOp.Task.Result;
+                remoteFolderText = remoteOp.Task.Result;
+                localFolderText = localOp.Task.Result;
+                deleteAfter = delOp.Task.Result;
+            }
+            catch
+            {
+                // On failure to read UI, fall back to using settings values (best-effort)
+                host = _settings?.Host ?? string.Empty;
+                portText = (_settings?.Port > 0) ? _settings.Port.ToString() : "21";
+                remoteFolderText = _settings?.RemoteFolder ?? "/";
+                localFolderText = _settings?.LocalFolder ?? string.Empty;
+                deleteAfter = _settings?.DeleteAfterDownload == true;
+            }
 
             Log($"{source} run: connecting to {host}:{portText} folder={remoteFolderText}", LogLevel.Info);
 
@@ -93,10 +66,9 @@ namespace FTP_Tool
                 var creds = GetCredentials();
                 var remoteFolder = remoteFolderText;
                 var localFolder = localFolderText;
-                var deleteAfter = Dispatcher.Invoke(() => chkDeleteAfterDownload.IsChecked == true);
 
                 // Use the new ListEntriesAsync to get file/directory information
-                var entries = await _ftpService.ListEntriesAsync(host2, port, creds, remoteFolder, token);
+                var entries = await _ftpService.ListEntriesAsync(host2, port, creds, remoteFolder, token).ConfigureAwait(false);
                 totalEntries = entries.Length;
 
                 // Count files and directories
@@ -136,7 +108,7 @@ namespace FTP_Tool
                         continue;
                     }
 
-                    var (Success, LocalPath, RemotePath, Deleted, ErrorMessage, Skipped) = await _ftpService.DownloadFileAsync(host2, port, creds, remoteFolder, name, localFolder, deleteAfter, token);
+                    var (Success, LocalPath, RemotePath, Deleted, ErrorMessage, Skipped) = await _ftpService.DownloadFileAsync(host2, port, creds, remoteFolder, name, localFolder, deleteAfter, token).ConfigureAwait(false);
 
                     if (Success)
                     {
@@ -149,13 +121,23 @@ namespace FTP_Tool
                         {
                             downloaded++;
                             anyDownloaded = true;
-                            Dispatcher.Invoke(() =>
+
+                            // Schedule UI updates without blocking the background thread
+                            try
                             {
-                                _downloadedCount++;
-                                UpdateDownloadedLabel();
-                                Log($"Downloaded: {name} -> {LocalPath}", LogLevel.Info);
-                                txtLastCheck.Text = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
-                            });
+                                await Dispatcher.BeginInvoke(new Action(() =>
+                                {
+                                    try
+                                    {
+                                        _downloadedCount++;
+                                        UpdateDownloadedLabel();
+                                        Log($"Downloaded: {name} -> {LocalPath}", LogLevel.Info);
+                                        txtLastCheck.Text = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
+                                    }
+                                    catch { }
+                                }));
+                            }
+                            catch { }
 
                             if (Deleted)
                             {
@@ -169,7 +151,7 @@ namespace FTP_Tool
                         if (!string.IsNullOrEmpty(ErrorMessage))
                         {
                             Log($"DownloadFile error ({name}): {ErrorMessage}", LogLevel.Warning);
-                            Dispatcher.Invoke(() => txtLastError.Text = ErrorMessage);
+                            try { await Dispatcher.BeginInvoke(new Action(() => txtLastError.Text = ErrorMessage)); } catch { }
                         }
                     }
                 }
@@ -185,10 +167,7 @@ namespace FTP_Tool
                     _lastAlertSent = DateTime.MinValue;
 
                     // update UI for last alert (cleared)
-                    Dispatcher.Invoke(() =>
-                    {
-                        try { txtLastAlert.Text = "-"; } catch { }
-                    });
+                    try { await Dispatcher.BeginInvoke(new Action(() => { try { txtLastAlert.Text = "-"; } catch { } })); } catch { }
                 }
             }
             catch (OperationCanceledException)
@@ -199,7 +178,7 @@ namespace FTP_Tool
             {
                 _errorCount++;
                 Log($"DownloadOnce error: {ex.Message}", LogLevel.Error);
-                Dispatcher.Invoke(() => txtLastError.Text = ex.Message);
+                try { await Dispatcher.BeginInvoke(new Action(() => txtLastError.Text = ex.Message)); } catch { }
             }
             finally
             {
@@ -241,6 +220,9 @@ namespace FTP_Tool
                 if (!_settings.SendDownloadAlerts) return;
                 if (_settings.AlertThresholdMinutes <= 0) return;
 
+                // If monitoring is not active and SendAlertsWhenNotMonitoring is false, skip
+                if (!IsMonitoringActive && !_settings.SendAlertsWhenNotMonitoring) return;
+
                 var now = DateTime.Now;
 
                 // Use new helper for schedule check
@@ -248,6 +230,14 @@ namespace FTP_Tool
 
                 // Determine reference time for last activity: either last successful download or monitoring started time
                 var lastActivity = (_lastSuccessfulCheck != DateTime.MinValue) ? _lastSuccessfulCheck : _monitoringStartedAt;
+                
+                // If monitoring never started and SendAlertsWhenNotMonitoring is enabled, use app start time
+                if (lastActivity == DateTime.MinValue && _settings.SendAlertsWhenNotMonitoring)
+                {
+                    // Use a reasonable fallback - app load time or current time minus threshold
+                    lastActivity = DateTime.Now.AddMinutes(-_settings.AlertThresholdMinutes - 1);
+                }
+                
                 if (lastActivity == DateTime.MinValue) return; // nothing to compare yet
 
                 var minutesSince = (DateTime.Now - lastActivity).TotalMinutes;
@@ -273,19 +263,37 @@ namespace FTP_Tool
                 try
                 {
                     _emailService ??= new Services.EmailService(_settings, _credentialService);
+
+                    // Capture UI strings safely
+                    string uiHost = string.Empty, uiRemote = string.Empty, uiLocal = string.Empty;
+                    try
+                    {
+                        var hostOp = Dispatcher.InvokeAsync(() => txtHost.Text.Trim());
+                        var remoteOp = Dispatcher.InvokeAsync(() => txtRemoteFolder.Text.Trim());
+                        var localOp = Dispatcher.InvokeAsync(() => txtLocalFolder.Text.Trim());
+                        await Task.WhenAll(hostOp.Task, remoteOp.Task, localOp.Task).ConfigureAwait(false);
+                        uiHost = hostOp.Task.Result;
+                        uiRemote = remoteOp.Task.Result;
+                        uiLocal = localOp.Task.Result;
+                    }
+                    catch
+                    {
+                        uiHost = _settings.Host ?? string.Empty;
+                        uiRemote = _settings.RemoteFolder ?? string.Empty;
+                        uiLocal = _settings.LocalFolder ?? string.Empty;
+                    }
+
+                    var monitoringStatus = IsMonitoringActive ? "Monitoring is running" : "Monitoring is NOT running";
                     var subject = $"FTP Monitor - No downloads for {_settings.AlertThresholdMinutes} minutes";
-                    var body = $"No downloads detected for at least {_settings.AlertThresholdMinutes} minutes.\nHost: {txtHost.Text.Trim()}\nRemote folder: {txtRemoteFolder.Text.Trim()}\nLocal folder: {txtLocalFolder.Text.Trim()}\nLast activity: {lastActivity:yyyy-MM-dd HH:mm:ss}\nNow: {now:yyyy-MM-dd HH:mm:ss}";
+                    var body = $"No downloads detected for at least {_settings.AlertThresholdMinutes} minutes.\n\nStatus: {monitoringStatus}\nHost: {uiHost}\nRemote folder: {uiRemote}\nLocal folder: {uiLocal}\nLast activity: {lastActivity:yyyy-MM-dd HH:mm:ss}\nNow: {now:yyyy-MM-dd HH:mm:ss}";
 
                     Log("Alert threshold exceeded, sending alert email...", LogLevel.Warning);
-                    await _emailService.SendEmailAsync(subject, body);
+                    await _emailService.SendEmailAsync(subject, body).ConfigureAwait(false);
                     _lastAlertSent = DateTime.Now;
                     Log("Alert email sent.", LogLevel.Info);
 
                     // Update UI with last alert time
-                    Dispatcher.Invoke(() =>
-                    {
-                        try { txtLastAlert.Text = _lastAlertSent.ToString("yyyy-MM-dd HH:mm:ss"); } catch { }
-                    });
+                    try { await Dispatcher.BeginInvoke(new Action(() => { try { txtLastAlert.Text = _lastAlertSent.ToString("yyyy-MM-dd HH:mm:ss"); } catch { } })); } catch { }
                 }
                 catch (Exception ex)
                 {
@@ -297,7 +305,8 @@ namespace FTP_Tool
                 Log($"MaybeSendNoDownloadAlertAsync error: {ex.Message}", LogLevel.Debug);
             }
         }
-        private static readonly char[] separator = [',', ';'];
+
+        private static readonly char[] separator = new char[] { ',', ';' };
 
         // Determines if the current time is within the allowed alert schedule.
         /// <summary>

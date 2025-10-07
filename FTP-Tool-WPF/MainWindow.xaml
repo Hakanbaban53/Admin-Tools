@@ -1184,8 +1184,23 @@
                                                     <TextBlock Text="minutes" VerticalAlignment="Center" Margin="8,0,0,0"/>
                                                 </StackPanel>
 
-                                                <!-- New checkbox to control whether to send download/no-activity emails -->
+                                                <!-- New checkbox to control whether to send download/no-activity alerts -->
                                                 <CheckBox x:Name="chkSendDownloadAlerts" Content="Send download/no-activity alerts" Margin="0,12,0,0"/>
+
+                                                <!-- When download alerts are enabled, allow sending alerts even when monitoring isn't running -->
+                                                <CheckBox x:Name="chkSendAlertsWhenNotMonitoring" Content="Send alerts even when monitoring is not running" Margin="0,8,0,0" ToolTip="When enabled, the application will still send download/no-activity alert emails even if the monitoring loop is not running.">
+                                                    <CheckBox.Style>
+                                                        <Style TargetType="CheckBox">
+                                                            <Setter Property="Visibility" Value="Collapsed"/>
+                                                            <Setter Property="IsChecked" Value="False"/>
+                                                            <Style.Triggers>
+                                                                <DataTrigger Binding="{Binding ElementName=chkSendDownloadAlerts, Path=IsChecked}" Value="True">
+                                                                    <Setter Property="Visibility" Value="Visible"/>
+                                                                </DataTrigger>
+                                                            </Style.Triggers>
+                                                        </Style>
+                                                    </CheckBox.Style>
+                                                </CheckBox>
                                             </StackPanel>
                                         </Border>
                                     </StackPanel>

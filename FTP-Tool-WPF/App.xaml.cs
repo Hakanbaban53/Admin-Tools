@@ -38,7 +38,15 @@ namespace FTP_Tool
                         return new SettingsService(path);
                     });
 
+                    // Core services used by MainWindow
                     services.AddSingleton<FtpService>();
+                    services.AddSingleton<CredentialService>();
+                    services.AddSingleton<MonitoringService>();
+
+                    // Ensure logging is available for ILogger<T> injection
+                    services.AddLogging();
+
+                    // Register MainWindow so it can be created via DI (ILogger and other services will be injected)
                     services.AddSingleton<MainWindow>();
                 })
                 .Build();

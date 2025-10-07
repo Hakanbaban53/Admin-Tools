@@ -1,6 +1,7 @@
 ﻿using FTP_Tool.Models;
 using FTP_Tool.Services;
 using FTP_Tool.ViewModels;
+using Microsoft.Extensions.Logging;
 using System.Collections.ObjectModel;
 using System.IO;
 using System.Windows;
@@ -18,9 +19,10 @@ namespace FTP_Tool
         private int _errorCount = 0;
         private DateTime _lastSuccessfulCheck = DateTime.MinValue;
 
-        private readonly FtpService _ftpService = new();
+        private readonly FtpService _ftpService;
         private readonly SettingsService _settings_service;
-        private readonly CredentialService _credentialService = new(); // added
+        private readonly CredentialService _credentialService;
+
         private AppSettings _settings = new();
 
         private readonly MainViewModel _viewModel;
@@ -34,8 +36,8 @@ namespace FTP_Tool
 
         private LoggingService? _logging_service;
 
-        // Monitoring service (extracted)
-        private readonly MonitoringService _monitoringService = new();
+        // Monitoring service (injected)
+        private readonly MonitoringService _monitoringService;
 
         // Tray icon
         private NotifyIcon? _trayIcon;
@@ -49,11 +51,20 @@ namespace FTP_Tool
         // Email service
         private EmailService? _emailService;
 
-        public MainWindow()
+        // ILogger for structured logging
+        private readonly ILogger<MainWindow>? _logger;
+
+        // Constructor now uses DI
+        public MainWindow(FtpService ftpService, SettingsService settingsService, CredentialService credentialService, MonitoringService monitoringService, ILogger<MainWindow> logger)
         {
             InitializeComponent();
 
-            _settings_service = new SettingsService(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "FTP_Tool", "settings.json"));
+            _ftpService = ftpService ?? throw new ArgumentNullException(nameof(ftpService));
+            _settings_service = settingsService ?? throw new ArgumentNullException(nameof(settingsService));
+            _credentialService = credentialService ?? throw new ArgumentNullException(nameof(credentialService));
+            _monitoringService = monitoringService ?? throw new ArgumentNullException(nameof(monitoringService));
+            _logger = logger;
+
             _viewModel = new MainViewModel(_ftpService);
             DataContext = this; // set to this so XAML can bind to _displayedLogEntriesPublic
 

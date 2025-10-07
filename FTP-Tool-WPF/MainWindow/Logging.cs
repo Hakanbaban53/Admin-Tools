@@ -5,6 +5,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
 using System.Windows.Threading;
+using Microsoft.Extensions.Logging;
 
 namespace FTP_Tool
 {
@@ -13,13 +14,14 @@ namespace FTP_Tool
         // pending log entries produced by background threads
         private readonly ConcurrentQueue<LogEntry> _pendingLogEntries = new();
         // displayed entries bound to ListBox (virtualized)
-        private readonly ObservableCollection<LogEntry> _displayedLogEntries = [];
+        private readonly ObservableCollection<LogEntry> _displayedLogEntries = new();
         private DispatcherTimer? _logFlushTimer;
         private int _newLogCount = 0;
         private bool _isUserAtBottom = true; // whether we should auto-scroll when new lines arrive
 
         private void SetStatus(string text)
         {
+            // Use BeginInvoke to avoid blocking calling threads
             Dispatcher.BeginInvoke(() => txtStatusText.Text = text);
         }
 
@@ -38,7 +40,7 @@ namespace FTP_Tool
 
             try
             {
-                // Update the small status/indicator immediately
+                // Update the small status/indicator immediately using BeginInvoke to avoid blocking
                 Dispatcher.BeginInvoke(() =>
                 {
                     try
@@ -73,10 +75,17 @@ namespace FTP_Tool
             }
             catch { }
 
-            // also log to file (if enabled) immediately
+            // also log to file (if enabled) immediately via LoggingService
             try
             {
                 _logging_service?.Log(_settings, level, text);
+            }
+            catch { }
+
+            // Forward to Microsoft.Extensions.Logging if available
+            try
+            {
+                _logger?.Log(MapToMicrosoftLogLevel(level), "{Message}", text);
             }
             catch { }
         }
@@ -228,6 +237,18 @@ namespace FTP_Tool
                 "warning" => LogLevel.Warning,
                 "error" => LogLevel.Error,
                 _ => LogLevel.Info,
+            };
+        }
+
+        private static Microsoft.Extensions.Logging.LogLevel MapToMicrosoftLogLevel(LogLevel lvl)
+        {
+            return lvl switch
+            {
+                LogLevel.Debug => Microsoft.Extensions.Logging.LogLevel.Debug,
+                LogLevel.Info => Microsoft.Extensions.Logging.LogLevel.Information,
+                LogLevel.Warning => Microsoft.Extensions.Logging.LogLevel.Warning,
+                LogLevel.Error => Microsoft.Extensions.Logging.LogLevel.Error,
+                _ => Microsoft.Extensions.Logging.LogLevel.Information,
             };
         }
     }

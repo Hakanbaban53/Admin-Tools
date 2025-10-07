@@ -96,6 +96,9 @@ namespace FTP_Tool.Models
         // Whether to actually send download/no-activity alert emails when threshold is reached
         public bool SendDownloadAlerts { get; set; } = true;
 
+        // When true, alerts will be sent even when monitoring is not running (requires SendDownloadAlerts to be true)
+        public bool SendAlertsWhenNotMonitoring { get; set; } = false;
+
         // --- Multi-Shift 24-Hour Support ---
         // When true, use WorkShifts instead of single WorkStart/WorkEnd + LunchStart/LunchEnd
         public bool UseMultiShiftMode { get; set; } = false;

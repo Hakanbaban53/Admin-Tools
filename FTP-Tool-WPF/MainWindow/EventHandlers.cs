@@ -11,7 +11,22 @@ namespace FTP_Tool
     {
         private NetworkCredential GetCredentials()
         {
-            return new NetworkCredential(txtUsername.Text.Trim(), txtPassword.Password);
+            try
+            {
+                if (Dispatcher.CheckAccess())
+                {
+                    return new NetworkCredential(txtUsername.Text.Trim(), txtPassword.Password);
+                }
+                else
+                {
+                    return Dispatcher.Invoke(() => new NetworkCredential(txtUsername.Text.Trim(), txtPassword.Password));
+                }
+            }
+            catch
+            {
+                // Fallback to empty creds if accessing UI fails for any reason
+                return new NetworkCredential(string.Empty, string.Empty);
+            }
         }
 
         private void UpdateDownloadedLabel()
@@ -23,6 +38,13 @@ namespace FTP_Tool
         private void BtnStart_Click(object sender, RoutedEventArgs e)
         {
             if (!ValidateInputs()) return;
+
+            // Prevent multiple concurrent starts
+            if (_monitoringTask != null && !_monitoringTask.IsCompleted)
+            {
+                Log("Monitoring already running.", LogLevel.Warning);
+                return;
+            }
 
             _settings.Host = txtHost.Text.Trim();
             _settings.Port = int.TryParse(txtPort.Text, out var p) ? p : 21;
@@ -44,12 +66,65 @@ namespace FTP_Tool
             UpdateSidebarStatus(true);
             btnCheckNow.IsEnabled = false;
 
+            // create a single CTS for the monitoring lifetime
+            try { _cts?.Dispose(); } catch { }
             _cts = new System.Threading.CancellationTokenSource();
             int seconds = _settings.IntervalSeconds > 0 ? _settings.IntervalSeconds : 30;
 
-            // Start the monitoring loop as an async task (do not run the whole method on a thread-pool thread).
-            // FTP/network operations inside the loop are already offloaded to background threads by FtpService.
-            _monitoringTask = StartMonitoringLoopAsync(seconds, _cts.Token);
+            // Start monitoring loop in dedicated service, pass delegate that performs the check
+            var task = FTP_Tool.Services.MonitoringService.StartMonitoringLoopAsync(
+                seconds,
+                async (ct) =>
+                {
+                    try
+                    {
+                        var downloaded = await DownloadOnceAsync(ct, "Scheduled");
+                        try { await MaybeSendNoDownloadAlertAsync(ct); } catch { }
+                        return downloaded;
+                    }
+                    catch (OperationCanceledException) { return false; }
+                    catch (Exception ex)
+                    {
+                        Log($"OnCheck delegate error: {ex.Message}", LogLevel.Error);
+                        return false;
+                    }
+                },
+                (msg, lvl) => { try { Log(msg, lvl); } catch { } },
+                _cts.Token);
+
+            // Store and attach continuation to observe exceptions and clean up state when done
+            _monitoringTask = task;
+            _monitoringTask.ContinueWith(t =>
+            {
+                if (t.IsFaulted)
+                {
+                    var ex = t.Exception?.Flatten().InnerException;
+                    Log($"Monitoring task failed: {ex?.Message}", LogLevel.Error);
+                }
+                else if (t.IsCanceled)
+                {
+                    Log("Monitoring task cancelled.", LogLevel.Info);
+                }
+                else
+                {
+                    Log("Monitoring task completed.", LogLevel.Info);
+                }
+
+                // ensure CTS disposed and UI updated on dispatcher thread
+                try { _cts?.Dispose(); } catch { }
+                _cts = null;
+                _monitoringTask = null;
+
+                Dispatcher.BeginInvoke(new Action(() =>
+                {
+                    UpdateUiState(false);
+                    UpdateSidebarStatus(false);
+                    btnCheckNow.IsEnabled = true;
+                    SetStatus("Monitoring stopped");
+                    try { UpdateTray(); } catch { }
+                }));
+
+            }, TaskScheduler.Default);
 
             SetStatus("Monitoring started");
             Log("Monitor started", LogLevel.Info);
