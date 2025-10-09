@@ -54,7 +54,6 @@ namespace FTP_Tool.Models
         public int SmtpPort { get; set; } = 25;
         public bool SmtpEnableSsl { get; set; } = false;
         public string SmtpUsername { get; set; } = string.Empty;
-        public string SmtpPassword { get; set; } = string.Empty; // stored plain-text for now
 
         // Email addresses
         public string EmailFrom { get; set; } = string.Empty;
@@ -75,12 +74,6 @@ namespace FTP_Tool.Models
         // Comma separated list of enabled weekdays (e.g. "Mon,Tue,Wed") -- or empty for none
         public string AlertWeekdays { get; set; } = "Mon,Tue,Wed,Thu,Fri";
 
-        // Work hours and lunch interval stored as HH:mm strings (legacy - single shift)
-        public string WorkStart { get; set; } = "08:00";
-        public string WorkEnd { get; set; } = "17:00";
-        public string LunchStart { get; set; } = "12:00";
-        public string LunchEnd { get; set; } = "13:00";
-
         // New: Send alerts all day on selected weekdays (ignore work hours and lunch)
         public bool AllDay { get; set; } = false;
 
@@ -100,14 +93,16 @@ namespace FTP_Tool.Models
         public bool SendAlertsWhenNotMonitoring { get; set; } = false;
 
         // --- Multi-Shift 24-Hour Support ---
-        // When true, use WorkShifts instead of single WorkStart/WorkEnd + LunchStart/LunchEnd
-        public bool UseMultiShiftMode { get; set; } = false;
+        // When true, use WorkShifts and ExcludedIntervals for alert timing.
+        // When false, use AllDay mode (alerts throughout the selected days).
+        public bool UseMultiShift { get; set; } = false;
 
         // Comma/semicolon-separated list of daily excluded/break intervals in the form "HH:mm-HH:mm".
         // Example: "12:00-13:00;15:00-15:15" for lunch and afternoon break
         public string ExcludedIntervals { get; set; } = string.Empty;
 
         // Semicolon-separated list of work shift intervals in the form "HH:mm-HH:mm".
+        // Example for single shift: "08:00-17:00"
         // Example for 3 shifts: "00:00-08:00;08:00-16:00;16:00-00:00"
         public string WorkShifts { get; set; } = string.Empty;
     }

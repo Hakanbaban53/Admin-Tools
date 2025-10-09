@@ -66,6 +66,9 @@ namespace FTP_Tool
             UpdateSidebarStatus(true);
             btnCheckNow.IsEnabled = false;
 
+            // Set monitoring started time for alert tracking
+            _monitoringStartedAt = DateTime.Now;
+
             // create a single CTS for the monitoring lifetime
             try { _cts?.Dispose(); } catch { }
             _cts = new System.Threading.CancellationTokenSource();
@@ -599,19 +602,6 @@ namespace FTP_Tool
                 }.Where(s => s != null).ToArray();
 
                 _settings.AlertWeekdays = string.Join(",", days);
-                var _ = _settings_service.SaveAsync(_settings);
-            }
-            catch { }
-        }
-
-        private void PersistWorkHours()
-        {
-            try
-            {
-                _settings.WorkStart = txtWorkStart.Text.Trim();
-                _settings.WorkEnd = txtWorkEnd.Text.Trim();
-                _settings.LunchStart = txtLunchStart.Text.Trim();
-                _settings.LunchEnd = txtLunchEnd.Text.Trim();
                 var _ = _settings_service.SaveAsync(_settings);
             }
             catch { }

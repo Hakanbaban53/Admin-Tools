@@ -5,6 +5,9 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using System.IO;
 using System.Windows;
+using System.Diagnostics;
+using System.Runtime.InteropServices;
+using System.Threading;
 
 namespace FTP_Tool
 {
@@ -14,9 +17,53 @@ namespace FTP_Tool
     public partial class App : System.Windows.Application
     {
         private IHost? _host;
+        private Mutex? _singleInstanceMutex;
 
         protected override void OnStartup(StartupEventArgs e)
         {
+            // Ensure single instance
+            var mutexName = "FTP_Tool_SingleInstance_Mutex"; // fixed name for single-instance
+            bool createdNew = false;
+            try
+            {
+                _singleInstanceMutex = new Mutex(initiallyOwned: true, name: mutexName, createdNew: out createdNew);
+            }
+            catch
+            {
+                createdNew = false;
+            }
+
+            if (!createdNew)
+            {
+                // Another instance is running - try to bring it to foreground and exit
+                try
+                {
+                    var current = Process.GetCurrentProcess();
+                    var processes = Process.GetProcessesByName(current.ProcessName);
+                    foreach (var p in processes)
+                    {
+                        if (p.Id == current.Id) continue;
+                        try
+                        {
+                            var handle = p.MainWindowHandle;
+                            if (handle != System.IntPtr.Zero)
+                            {
+                                // restore and bring to foreground
+                                ShowWindowAsync(handle, SW_RESTORE);
+                                SetForegroundWindow(handle);
+                                break;
+                            }
+                        }
+                        catch { }
+                    }
+                }
+                catch { }
+
+                // Shutdown this instance
+                Shutdown();
+                return;
+            }
+
             // Install global handlers as early as possible
             AppDomain.CurrentDomain.UnhandledException += CurrentDomain_UnhandledException;
             TaskScheduler.UnobservedTaskException += TaskScheduler_UnobservedTaskException;
@@ -64,6 +111,15 @@ namespace FTP_Tool
                 await _host.StopAsync();
                 _host.Dispose();
             }
+
+            try
+            {
+                _singleInstanceMutex?.ReleaseMutex();
+                _singleInstanceMutex?.Dispose();
+                _singleInstanceMutex = null;
+            }
+            catch { }
+
             base.OnExit(e);
         }
 
@@ -150,5 +206,14 @@ namespace FTP_Tool
             }
             catch { }
         }
+
+        // P/Invoke to bring other instance to foreground
+        [DllImport("user32.dll")]
+        private static extern bool SetForegroundWindow(System.IntPtr hWnd);
+
+        [DllImport("user32.dll")]
+        private static extern bool ShowWindowAsync(System.IntPtr hWnd, int nCmdShow);
+
+        private const int SW_RESTORE = 9;
     }
 }

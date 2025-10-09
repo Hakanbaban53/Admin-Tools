@@ -318,16 +318,18 @@ namespace FTP_Tool
         {
             if (_settings == null) return false;
             if (!_settings.AlertsEnabled) return false;
+            
+            // AlertAlways (24/7 mode): Ignore ALL schedule settings
             if (_settings.AlertAlways) return true;
 
-            // Check weekday
+            // Check weekday - both AllDay and normal schedule respect selected days
             var days = (_settings.AlertWeekdays ?? string.Empty)
                 .Split(separator, StringSplitOptions.RemoveEmptyEntries)
                 .Select(s => s.Trim());
             var shortDay = now.ToString("ddd"); // Mon, Tue, ...
             if (!days.Contains(shortDay)) return false;
 
-            // If AllDay is enabled, we honor the selected weekdays but ignore work hours / lunch
+            // If AllDay is enabled, we honor the selected weekdays but ignore work hours
             if (_settings.AllDay)
             {
                 // Still respect daily excluded intervals if provided
@@ -338,7 +340,7 @@ namespace FTP_Tool
             var excludedIntervals = ParseIntervals(_settings.ExcludedIntervals);
 
             // Multi-shift mode: check the configured shifts
-            if (_settings.UseMultiShiftMode && !string.IsNullOrWhiteSpace(_settings.WorkShifts))
+            if (!string.IsNullOrWhiteSpace(_settings.WorkShifts))
             {
                 var shifts = ParseIntervals(_settings.WorkShifts);
                 var t = now.TimeOfDay;
@@ -355,28 +357,8 @@ namespace FTP_Tool
                 return true;
             }
 
-            // Legacy single-shift logic
-            if (TimeSpan.TryParse(_settings.WorkStart ?? "08:00", out var workStart) &&
-                TimeSpan.TryParse(_settings.WorkEnd ?? "17:00", out var workEnd))
-            {
-                var t = now.TimeOfDay;
-                var inWork = IsTimeInInterval(t, workStart, workEnd);
-                if (!inWork) return false;
-
-                // If excluded intervals contain now, block alerts
-                if (excludedIntervals != null && excludedIntervals.Count > 0)
-                {
-                    if (IsInExcludedIntervals(t, _settings.ExcludedIntervals)) return false;
-                }
-
-                // Check lunch break
-                if (TimeSpan.TryParse(_settings.LunchStart ?? "12:00", out var lunchStart) &&
-                    TimeSpan.TryParse(_settings.LunchEnd ?? "13:00", out var lunchEnd))
-                {
-                    if (IsTimeInInterval(t, lunchStart, lunchEnd)) return false;
-                }
-            }
-            return true;
+            // If no WorkShifts configured and not in AllDay or AlertAlways, default to false (no schedule defined)
+            return false;
         }
 
         // Helper: parse a semicolon/comma-separated list of HH:mm-HH:mm into list of intervals

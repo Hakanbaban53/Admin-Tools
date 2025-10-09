@@ -137,10 +137,6 @@ namespace FTP_Tool
                 }
                 catch { }
 
-                txtWorkStart.Text = _settings.WorkStart ?? "08:00";
-                txtWorkEnd.Text = _settings.WorkEnd ?? "17:00";
-                txtLunchStart.Text = _settings.LunchStart ?? "12:00";
-                txtLunchEnd.Text = _settings.LunchEnd ?? "13:00";
                 txtAlertThreshold.Text = (_settings.AlertThresholdMinutes > 0 ? _settings.AlertThresholdMinutes : 15).ToString();
 
                 // CRITICAL: Load alert states BEFORE ApplyAlertUiState is called
@@ -148,18 +144,11 @@ namespace FTP_Tool
                 if (chkAlertsEnabled != null) chkAlertsEnabled.IsChecked = _settings.AlertsEnabled;
                 if (chkAlertAlways != null) chkAlertAlways.IsChecked = _settings.AlertAlways;
                 if (chkAllDay != null) chkAllDay.IsChecked = _settings.AllDay;
+                if (chkUseMultiShift != null) chkUseMultiShift.IsChecked = _settings.UseMultiShift;
                 if (chkSendDownloadAlerts != null) chkSendDownloadAlerts.IsChecked = _settings.SendDownloadAlerts;
                 if (chkSendAlertsWhenNotMonitoring != null) chkSendAlertsWhenNotMonitoring.IsChecked = _settings.SendAlertsWhenNotMonitoring;
 
-                // Email type options
-                if (chkEmailInfo != null) chkEmailInfo.IsChecked = _settings.EmailOnInfo;
-                if (chkEmailWarnings != null) chkEmailWarnings.IsChecked = _settings.EmailOnWarnings;
-                if (chkEmailErrors != null) chkEmailErrors.IsChecked = _settings.EmailOnErrors;
-                if (txtEmailSummaryInterval != null) txtEmailSummaryInterval.Text = _settings.EmailSummaryIntervalMinutes.ToString();
-
                 // Multi-shift UI population (load data AND set checkbox state)
-                if (chkUseMultiShift != null) chkUseMultiShift.IsChecked = _settings.UseMultiShiftMode;
-
                 _workShifts = new ObservableCollection<IntervalItem>();
                 if (!string.IsNullOrWhiteSpace(_settings.WorkShifts))
                 {
@@ -267,19 +256,6 @@ namespace FTP_Tool
                 if (chkSat != null) { chkSat.Checked += (s, ev) => persist(); chkSat.Unchecked += (s, ev) => persist(); }
                 if (chkSun != null) { chkSun.Checked += (s, ev) => persist(); chkSun.Unchecked += (s, ev) => persist(); }
 
-                // Wire multi-shift toggle so the UI updates immediately when user changes it
-                try
-                {
-                    if (chkUseMultiShift != null)
-                    {
-                        chkUseMultiShift.Checked += (s, ev) => ApplyMultiShiftState(true);
-                        chkUseMultiShift.Unchecked += (s, ev) => ApplyMultiShiftState(false);
-                        // initialize based on current checkbox state (or settings already applied earlier)
-                        ApplyMultiShiftState(chkUseMultiShift.IsChecked == true);
-                    }
-                }
-                catch { }
-
                 // Note: Add/Edit dialog logic removed. Inline DataGrid editing and RowEditEnding validation are used instead.
                 // Remove buttons are wired via XAML Click handlers to the methods implemented below.
 
@@ -293,13 +269,16 @@ namespace FTP_Tool
                         chkAlertsEnabled.Unchecked += (s, ev) => { _settings.AlertsEnabled = false; _ = _settings_service.SaveAsync(_settings); ApplyAlertUiState(); };
                     }
 
-                    // AlertAlways (7/24) - when checked, clear AllDay and disable hours
+                    // AlertAlways (24/7) - when checked, clear other modes
                     if (chkAlertAlways != null)
                     {
                         chkAlertAlways.Checked += (s, ev) =>
                         {
                             _settings.AlertAlways = true;
+                            // Clear other modes since 24/7 takes precedence
                             try { if (chkAllDay != null) chkAllDay.IsChecked = false; } catch { }
+                            try { if (chkUseMultiShift != null) chkUseMultiShift.IsChecked = false; } catch { }
+                            // Auto-enable alerts when 24/7 is checked
                             try { _settings.AlertsEnabled = true; if (chkAlertsEnabled != null) chkAlertsEnabled.IsChecked = true; } catch { }
                             _ = _settings_service.SaveAsync(_settings);
                             ApplyAlertUiState();
@@ -307,11 +286,34 @@ namespace FTP_Tool
                         chkAlertAlways.Unchecked += (s, ev) => { _settings.AlertAlways = false; _ = _settings_service.SaveAsync(_settings); ApplyAlertUiState(); };
                     }
 
-                    // All-day handlers - when checked, clear AlertAlways
+                    // All-day handlers - when checked, clear other modes
                     if (chkAllDay != null)
                     {
-                        chkAllDay.Checked += (s, ev) => { _settings.AllDay = true; try { if (chkAlertAlways != null) chkAlertAlways.IsChecked = false; } catch { } _ = _settings_service.SaveAsync(_settings); ApplyAlertUiState(); };
+                        chkAllDay.Checked += (s, ev) => 
+                        { 
+                            _settings.AllDay = true; 
+                            // Clear other modes since All Day is mutually exclusive
+                            try { if (chkAlertAlways != null) chkAlertAlways.IsChecked = false; } catch { }
+                            try { if (chkUseMultiShift != null) chkUseMultiShift.IsChecked = false; } catch { }
+                            _ = _settings_service.SaveAsync(_settings); 
+                            ApplyAlertUiState(); 
+                        };
                         chkAllDay.Unchecked += (s, ev) => { _settings.AllDay = false; _ = _settings_service.SaveAsync(_settings); ApplyAlertUiState(); };
+                    }
+
+                    // Multi-shift mode handlers - when checked, clear other modes
+                    if (chkUseMultiShift != null)
+                    {
+                        chkUseMultiShift.Checked += (s, ev) => 
+                        { 
+                            _settings.UseMultiShift = true; 
+                            // Clear other modes since Custom Schedule is mutually exclusive
+                            try { if (chkAlertAlways != null) chkAlertAlways.IsChecked = false; } catch { }
+                            try { if (chkAllDay != null) chkAllDay.IsChecked = false; } catch { }
+                            _ = _settings_service.SaveAsync(_settings); 
+                            ApplyAlertUiState(); 
+                        };
+                        chkUseMultiShift.Unchecked += (s, ev) => { _settings.UseMultiShift = false; _ = _settings_service.SaveAsync(_settings); ApplyAlertUiState(); };
                     }
 
                     // Send-downloads checkbox handlers
@@ -347,19 +349,6 @@ namespace FTP_Tool
                             }
                         };
                     }
-				
-                    // Email option handlers
-                    if (chkEmailInfo != null) { chkEmailInfo.Checked += (s, ev) => { _settings.EmailOnInfo = true; _ = _settings_service.SaveAsync(_settings); }; chkEmailInfo.Unchecked += (s, ev) => { _settings.EmailOnInfo = false; _ = _settings_service.SaveAsync(_settings); }; }
-                    if (chkEmailWarnings != null) { chkEmailWarnings.Checked += (s, ev) => { _settings.EmailOnWarnings = true; _ = _settings_service.SaveAsync(_settings); }; chkEmailWarnings.Unchecked += (s, ev) => { _settings.EmailOnWarnings = false; _ = _settings_service.SaveAsync(_settings); }; }
-                    if (chkEmailErrors != null) { chkEmailErrors.Checked += (s, ev) => { _settings.EmailOnErrors = true; _ = _settings_service.SaveAsync(_settings); }; chkEmailErrors.Unchecked += (s, ev) => { _settings.EmailOnErrors = false; _ = _settings_service.SaveAsync(_settings); }; }
-
-                    if (txtEmailSummaryInterval != null)
-                    {
-                        txtEmailSummaryInterval.LostFocus += (s, ev) =>
-                        {
-                            if (int.TryParse(txtEmailSummaryInterval.Text, out var val)) { _settings.EmailSummaryIntervalMinutes = Math.Max(1, val); _ = _settings_service.SaveAsync(_settings); } else { txtEmailSummaryInterval.Text = _settings.EmailSummaryIntervalMinutes.ToString(); }
-                        };
-                    }
 
                     // Persist alert threshold on focus loss
                     if (txtAlertThreshold != null)
@@ -368,27 +357,6 @@ namespace FTP_Tool
                         {
                             if (int.TryParse(txtAlertThreshold.Text, out var val)) { _settings.AlertThresholdMinutes = Math.Max(1, val); _ = _settings_service.SaveAsync(_settings); } else { try { txtAlertThreshold.Text = (_settings.AlertThresholdMinutes > 0 ? _settings.AlertThresholdMinutes : 15).ToString(); } catch { } }
                         };
-                    }
-
-                    // Persist work / lunch times when user edits the textboxes (validate HH:mm)
-                    if (txtWorkStart != null)
-                    {
-                        txtWorkStart.LostFocus += (s, ev) => { try { if (TimeSpan.TryParse(txtWorkStart.Text, out var ts)) { _settings.WorkStart = ts.ToString(@"hh\:mm"); _ = _settings_service.SaveAsync(_settings); } else { txtWorkStart.Text = _settings.WorkStart ?? "08:00"; } } catch { } };
-                    }
-
-                    if (txtWorkEnd != null)
-                    {
-                        txtWorkEnd.LostFocus += (s, ev) => { try { if (TimeSpan.TryParse(txtWorkEnd.Text, out var ts)) { _settings.WorkEnd = ts.ToString(@"hh\:mm"); _ = _settings_service.SaveAsync(_settings); } else { txtWorkEnd.Text = _settings.WorkEnd ?? "17:00"; } } catch { } };
-                    }
-
-                    if (txtLunchStart != null)
-                    {
-                        txtLunchStart.LostFocus += (s, ev) => { try { if (TimeSpan.TryParse(txtLunchStart.Text, out var ts)) { _settings.LunchStart = ts.ToString(@"hh\:mm"); _ = _settings_service.SaveAsync(_settings); } else { txtLunchStart.Text = _settings.LunchStart ?? "12:00"; } } catch { } };
-                    }
-
-                    if (txtLunchEnd != null)
-                    {
-                        txtLunchEnd.LostFocus += (s, ev) => { try { if (TimeSpan.TryParse(txtLunchEnd.Text, out var ts)) { _settings.LunchEnd = ts.ToString(@"hh\:mm"); _ = _settings_service.SaveAsync(_settings); } else { txtLunchEnd.Text = _settings.LunchEnd ?? "13:00"; } } catch { } };
                     }
 
                     // Final initialization step for alerts UI
@@ -536,27 +504,17 @@ namespace FTP_Tool
                 try { _settings.SendAlertsWhenNotMonitoring = chkSendAlertsWhenNotMonitoring.IsChecked == true; } catch { }
 
                 // persist new email options
-                try { _settings.EmailOnInfo = chkEmailInfo.IsChecked == true; } catch { }
-                try { _settings.EmailOnWarnings = chkEmailWarnings.IsChecked == true; } catch { }
-                try { _settings.EmailOnErrors = chkEmailErrors.IsChecked == true; } catch { }
-                try { _settings.EmailSummaryIntervalMinutes = int.TryParse(txtEmailSummaryInterval.Text, out var iv) ? Math.Max(1, iv) : _settings.EmailSummaryIntervalMinutes; } catch { }
+                // (Alert type controls removed from UI - persistence handled elsewhere or removed)
 
-                // Persist work and lunch times so they are not lost on exit
-                try
-                {
-                    _settings.WorkStart = txtWorkStart.Text.Trim();
-                    _settings.WorkEnd = txtWorkEnd.Text.Trim();
-                    _settings.LunchStart = txtLunchStart.Text.Trim();
-                    _settings.LunchEnd = txtLunchEnd.Text.Trim();
-                    try { _settings.AllDay = chkAllDay.IsChecked == true; } catch { }
-                }
-                catch { }
+                // Persist AllDay setting
+                try { _settings.AllDay = chkAllDay.IsChecked == true; } catch { }
+
+                // Persist UseMultiShift setting
+                try { _settings.UseMultiShift = chkUseMultiShift.IsChecked == true; } catch { }
 
                 // Persist multi-shift and excluded intervals
                 try
                 {
-                    try { _settings.UseMultiShiftMode = chkUseMultiShift.IsChecked == true; } catch { }
-
                     if (_workShifts != null)
                     {
                         var items = _workShifts.Select(i => i.IntervalString);
@@ -752,54 +710,66 @@ namespace FTP_Tool
             catch { }
         }
 
-        private void ApplyMultiShiftState(bool useMulti)
-        {
-            try
-            {
-                // Hide or disable single-period inputs when multi-shift active
-                if (brdWorkHours != null) brdWorkHours.Visibility = useMulti ? Visibility.Collapsed : Visibility.Visible;
-                if (brdLunchBreak != null) brdLunchBreak.Visibility = useMulti ? Visibility.Collapsed : Visibility.Visible;
-
-                // Save setting
-                try { _settings.UseMultiShiftMode = useMulti; _ = _settings_service.SaveAsync(_settings); } catch { }
-                
-                // Apply alert UI state after multi-shift state change to ensure proper enabling/disabling
-                ApplyAlertUiState();
-            }
-            catch { }
-        }
-
-        // Add ApplyAlertUiState method that properly manages the enabled/disabled state of controls
         private void ApplyAlertUiState()
         {
             try
             {
                 var enabled = chkAlertsEnabled?.IsChecked == true;
-                var always = chkAlertAlways?.IsChecked == true;
-                var allDay = chkAllDay?.IsChecked == true;
-                var useMultiShift = chkUseMultiShift?.IsChecked == true;
+                var alertAlways = chkAlertAlways?.IsChecked == true; // 24/7: ignore days AND hours
+                var allDay = chkAllDay?.IsChecked == true; // All day: respect days, ignore hours
+                var useMultiShift = chkUseMultiShift?.IsChecked == true; // Custom schedule: use shift tables
 
-                // Weekday checkboxes - disabled when AlertAlways is on
-                if (chkMon != null) chkMon.IsEnabled = enabled && !always;
-                if (chkTue != null) chkTue.IsEnabled = enabled && !always;
-                if (chkWed != null) chkWed.IsEnabled = enabled && !always;
-                if (chkThu != null) chkThu.IsEnabled = enabled && !always;
-                if (chkFri != null) chkFri.IsEnabled = enabled && !always;
-                if (chkSat != null) chkSat.IsEnabled = enabled && !always;
-                if (chkSun != null) chkSun.IsEnabled = enabled && !always;
+                // Find the UI panels by name
+                var pnlAlertContent = this.FindName("pnlAlertScheduleContent") as FrameworkElement;
+                var pnlWeekdays = this.FindName("pnlWeekdays") as StackPanel;
+                var pnlShiftTables = this.FindName("pnlShiftTables") as Border;
+                var pnlDownloadAlertSettings = this.FindName("pnlDownloadAlertSettings") as StackPanel;
 
-                // Hour inputs - disabled when AllDay, AlertAlways, or UseMultiShift is enabled
-                var disableHours = allDay || always || useMultiShift;
-                if (txtWorkStart != null) txtWorkStart.IsEnabled = enabled && !disableHours;
-                if (txtWorkEnd != null) txtWorkEnd.IsEnabled = enabled && !disableHours;
-                if (txtLunchStart != null) txtLunchStart.IsEnabled = enabled && !disableHours;
-                if (txtLunchEnd != null) txtLunchEnd.IsEnabled = enabled && !disableHours;
+                // Show/hide the whole schedule content depending on master toggle
+                if (pnlAlertContent != null)
+                {
+                    pnlAlertContent.Visibility = enabled ? Visibility.Visible : Visibility.Collapsed;
+                }
+
+                // When alerts are disabled, also disable the mode checkboxes to avoid confusion
+                if (chkAlertAlways != null) chkAlertAlways.IsEnabled = enabled;
+                if (chkAllDay != null) chkAllDay.IsEnabled = enabled;
+                if (chkUseMultiShift != null) chkUseMultiShift.IsEnabled = enabled;
+
+                // Weekday checkboxes - hidden when AlertAlways (24/7) is on, enabled otherwise
+                var showWeekdays = enabled && !alertAlways;
+                if (pnlWeekdays != null)
+                {
+                    pnlWeekdays.Visibility = showWeekdays ? Visibility.Visible : Visibility.Collapsed;
+                }
+
+                // Enable/disable individual weekday checkboxes
+                if (chkMon != null) chkMon.IsEnabled = showWeekdays;
+                if (chkTue != null) chkTue.IsEnabled = showWeekdays;
+                if (chkWed != null) chkWed.IsEnabled = showWeekdays;
+                if (chkThu != null) chkThu.IsEnabled = showWeekdays;
+                if (chkFri != null) chkFri.IsEnabled = showWeekdays;
+                if (chkSat != null) chkSat.IsEnabled = showWeekdays;
+                if (chkSun != null) chkSun.IsEnabled = showWeekdays;
+
+                // Shift tables - shown only when Custom Schedule is enabled and alerts are on
+                if (pnlShiftTables != null)
+                {
+                    pnlShiftTables.Visibility = (enabled && useMultiShift && !alertAlways) ? Visibility.Visible : Visibility.Collapsed;
+                }
+
+                // Download alert settings visibility
+                var sendDownloads = chkSendDownloadAlerts?.IsChecked == true;
+                if (pnlDownloadAlertSettings != null)
+                {
+                    pnlDownloadAlertSettings.Visibility = sendDownloads ? Visibility.Visible : Visibility.Collapsed;
+                }
 
                 // Send-download checkbox - enabled when alerts are enabled
                 if (chkSendDownloadAlerts != null) chkSendDownloadAlerts.IsEnabled = enabled;
 
                 // Threshold textbox - enabled only when alerts enabled AND send-downloads checked
-                if (txtAlertThreshold != null) txtAlertThreshold.IsEnabled = enabled && (chkSendDownloadAlerts?.IsChecked == true);
+                if (txtAlertThreshold != null) txtAlertThreshold.IsEnabled = enabled && sendDownloads;
             }
             catch { }
         }

@@ -996,18 +996,10 @@
                                     <CheckBox x:Name="chkAlertsEnabled" Content="Enable email alerts" FontSize="14" FontWeight="SemiBold"/>
                                 </Border>
 
-                                <Grid x:Name="pnlAlertScheduleContent">
-                                    <Grid.RowDefinitions>
-                                        <RowDefinition Height="Auto"/>
-                                        <RowDefinition Height="Auto"/>
-                                        <RowDefinition Height="Auto"/>
-                                        <RowDefinition Height="Auto"/>
-                                        <RowDefinition Height="Auto"/>
-                                        <RowDefinition Height="Auto"/>
-                                    </Grid.RowDefinitions>
-
+                                <!-- Alert Configuration Panel (shown only when alerts are enabled) -->
+                                <StackPanel x:Name="pnlAlertConfiguration" Margin="0,16,0,0">
                                     <!-- Schedule Mode Selection -->
-                                    <StackPanel Grid.Row="1" Margin="0,20,0,0">
+                                    <StackPanel>
                                         <TextBlock Text="Schedule Mode" Style="{StaticResource LabelText}" FontWeight="SemiBold" Margin="0,0,0,12"/>
                                         
                                         <!-- Mode 1: 24/7 - ignores both days and hours -->
@@ -1054,7 +1046,7 @@
                                     </StackPanel>
 
                                     <!-- Days of week (hidden when 24/7 is enabled) -->
-                                    <StackPanel Grid.Row="2" Margin="0,20,0,0" x:Name="pnlWeekdays">
+                                    <StackPanel x:Name="pnlWeekdays" Margin="0,20,0,0">
                                         <TextBlock Text="Active Days" FontSize="14" FontWeight="SemiBold" Margin="0,0,0,8"/>
                                         <Border Background="#F8F9FA" CornerRadius="4" Padding="16">
                                             <WrapPanel>
@@ -1070,7 +1062,7 @@
                                     </StackPanel>
 
                                     <!-- Work Shifts & Excluded Intervals (shown only when Custom Schedule is enabled) -->
-                                    <Border Grid.Row="3" x:Name="pnlShiftTables" Background="#F8F9FA" CornerRadius="6" Padding="20" Margin="0,20,0,0">
+                                    <Border x:Name="pnlShiftTables" Background="#F8F9FA" CornerRadius="6" Padding="20" Margin="0,20,0,0">
                                         <StackPanel>
                                             <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
                                                 <TextBlock Text="⏰" FontSize="16" Margin="0,0,8,0" VerticalAlignment="Center"/>
@@ -1171,7 +1163,7 @@
                                     </Border>
 
                                     <!-- Alert Threshold -->
-                                    <StackPanel Grid.Row="4" Margin="0,20,0,0">
+                                    <StackPanel Margin="0,20,0,0">
                                         <TextBlock Text="Download Activity Alerts" Style="{StaticResource LabelText}" FontWeight="SemiBold" Margin="0,0,0,8"/>
                                         <Border Background="#F8F9FA" CornerRadius="4" Padding="16">
                                             <StackPanel>
@@ -1192,7 +1184,7 @@
                                     </StackPanel>
 
                                     <!-- Help Text -->
-                                    <Border Grid.Row="5" Background="#FFF9E6" BorderBrush="#FFC107" BorderThickness="1" CornerRadius="6" Padding="16" Margin="0,24,0,0">
+                                    <Border Background="#FFF9E6" BorderBrush="#FFC107" BorderThickness="1" CornerRadius="6" Padding="16" Margin="0,24,0,0">
                                         <StackPanel>
                                             <TextBlock Text="ℹ️ How Alert Schedules Work" FontWeight="SemiBold" FontSize="13" Margin="0,0,0,12"/>
                                             
@@ -1203,101 +1195,17 @@
                                             <TextBlock Text="• Custom Schedule: Alerts only during defined work shifts on selected days" FontSize="11" Margin="0,0,0,12"/>
                                             
 
-                                            <TextBlock Text="Alert Types:" FontWeight="SemiBold" FontSize="12" Margin="0,0,0,6"/>
-                                            <TextBlock Text="• Errors/Warnings: Sent immediately when they occur (respects schedule)" FontSize="11" Margin="0,0,0,3"/>
-                                            <TextBlock Text="• Info Summaries: Batched and sent at configured interval" FontSize="11" Margin="0,0,0,3"/>
-                                            <TextBlock Text="• Download Alerts: Triggered when no activity detected for threshold period" FontSize="11"/>
+                                            <TextBlock Text="Alert Behavior:" FontWeight="SemiBold" FontSize="12" Margin="0,0,0,6"/>
+                                            <TextBlock Text="• Download alerts: Triggered when no activity detected for threshold period" FontSize="11" Margin="0,0,0,3"/>
+                                            <TextBlock Text="• Alerts respect the selected schedule mode and active days" FontSize="11"/>
                                         </StackPanel>
                                     </Border>
-                                </Grid>
+                                </StackPanel>
                             </StackPanel>
                         </Border>
 
                     </StackPanel>
                 </ScrollViewer>
             </Grid>
-
-            <!-- About Page -->
-            <Grid x:Name="AboutPage" Visibility="Collapsed">
-                <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" MaxWidth="500">
-                    <TextBlock Text="ℹ️" FontSize="48" HorizontalAlignment="Center" Margin="0,0,0,16"/>
-                    <TextBlock Text="About FTP Monitor" Style="{StaticResource PageTitle}" HorizontalAlignment="Center"/>
-                    <TextBlock Text="Version 1.0.0" FontSize="16" HorizontalAlignment="Center" Margin="0,0,0,20"/>
-                    <TextBlock Text="A powerful file monitoring and transfer application that helps you automatically download files from Linux FTP servers to your Windows machine." 
-                               Style="{StaticResource PageSubtitle}" HorizontalAlignment="Center" TextWrapping="Wrap"/>
-                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,20,0,0">
-                        <Button Content="📧 Support" Style="{StaticResource SecondaryButton}" Margin="0,0,10,0"/>
-                        <Button Content="🌐 Website" Style="{StaticResource SecondaryButton}"/>
-                    </StackPanel>
-                </StackPanel>
-            </Grid>
-
-            <!-- Floating in-window sidebar was moved into the main content Grid to ensure it slides over content area -->
-            <Border x:Name="FloatingSidebar" Background="#FAFAFA" BorderBrush="#E1DFDD" BorderThickness="2"
-                    Width="260" VerticalAlignment="Stretch" HorizontalAlignment="Left" Visibility="Collapsed"
-                    RenderTransformOrigin="0.5,0.5" Panel.ZIndex="10" ClipToBounds="True"
-                    CornerRadius="16">
-                <Border.RenderTransform>
-                    <TranslateTransform X="-260" />
-                </Border.RenderTransform>
-                <StackPanel>
-                    <Border Background="#0078D4" Padding="20" CornerRadius="16,16,0,0">
-                        <StackPanel>
-                            <TextBlock Text="FTP Monitor" FontSize="18" FontWeight="Bold" Foreground="White"/>
-                            <TextBlock Text="File Transfer Tool" FontSize="12" Foreground="#E1F5FE"/>
-                        </StackPanel>
-                    </Border>
-
-                    <StackPanel Margin="0,20,0,0">
-                        <Button x:Name="btnFloatingNavMonitor" Style="{StaticResource NavButtonActive}" Click="BtnNavMonitor_Click">
-                            <StackPanel Orientation="Horizontal">
-                                <TextBlock Text="📡" FontSize="16" Margin="0,0,12,0"/>
-                                <TextBlock Text="Monitor" VerticalAlignment="Center"/>
-                            </StackPanel>
-                        </Button>
-
-                        <Button x:Name="btnFloatingNavAlerts" Style="{StaticResource NavButton}" Click="BtnNavAlerts_Click">
-                            <StackPanel Orientation="Horizontal">
-                                <TextBlock Text="🔔" FontSize="16" Margin="0,0,12,0"/>
-                                <TextBlock Text="Alerts" VerticalAlignment="Center"/>
-                            </StackPanel>
-                        </Button>
-
-                        <Button x:Name="btnFloatingNavSettings" Style="{StaticResource NavButton}" Click="BtnNavSettings_Click">
-                            <StackPanel Orientation="Horizontal">
-                                <TextBlock Text="⚙️" FontSize="16" Margin="0,0,12,0"/>
-                                <TextBlock Text="Settings" VerticalAlignment="Center"/>
-                            </StackPanel>
-                        </Button>
-
-                        <Button x:Name="btnFloatingNavAbout" Style="{StaticResource NavButton}" Click="BtnNavAbout_Click">
-                            <StackPanel Orientation="Horizontal">
-                                <TextBlock Text="ℹ️" FontSize="16" Margin="0,0,12,0"/>
-                                <TextBlock Text="About" VerticalAlignment="Center"/>
-                            </StackPanel>
-                        </Button>
-                    </StackPanel>
-                    <!-- Bottom Status -->
-                    <StackPanel VerticalAlignment="Bottom" Margin="20" Background="White"
-           Height="100">
-                        <Border CornerRadius="4" Padding="12" Background="#F8F9FA">
-                            <StackPanel>
-                                <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
-                                    <Ellipse x:Name="ellipseFloatingNavStatus" Width="8" Height="8" Fill="#6BB6FF" 
-                         VerticalAlignment="Center" Margin="0,0,8,0"/>
-                                    <TextBlock x:Name="txtFloatingNavStatus" Text="Ready" FontSize="12" FontWeight="SemiBold"/>
-                                </StackPanel>
-
-                                <TextBlock x:Name="txtFloatingNavFiles" Text="No files monitored" FontSize="11" Foreground="#605E5C" Margin="0,2,0,0"/>
-                                <TextBlock x:Name="txtFloatingNavRemote" Text="Remote: 0 files" FontSize="11" Foreground="#605E5C" Margin="0,1,0,0"/>
-                                <TextBlock x:Name="txtFloatingNavErrors" Text="Errors: 0" FontSize="11" Foreground="#605E5C" Margin="0,1,0,0"/>
-                                <TextBlock x:Name="txtFloatingNavLastCheck" Text="Last: Never" FontSize="11" Foreground="#605E5C" Margin="0,1,0,0"/>
-                                <TextBlock x:Name="txtFloatingNavLastAlert" Text="Last alert: -" FontSize="11" Foreground="#605E5C" Margin="0,1,0,0"/>
-                            </StackPanel>
-                        </Border>
-                    </StackPanel>
-                </StackPanel>
-            </Border>
-        </Grid>
     </Grid>
 </Window>
