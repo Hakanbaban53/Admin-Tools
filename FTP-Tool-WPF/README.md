@@ -22,6 +22,7 @@ A powerful, user-friendly Windows desktop application for monitoring and automat
   - Warning alerts (sent immediately)
   - Info summaries (batched at configurable intervals)
   - Download/no-activity alerts
+- **Customizable Templates**: Editable subject and body templates for download/no-activity alerts with support for placeholders ({threshold}, {status}, {host}, {remote}, {local}, {lastActivity}, {now})
 - **Flexible Scheduling**:
   - 24/7 monitoring or scheduled hours
   - Multi-shift support (overnight shifts)
@@ -128,6 +129,23 @@ A powerful, user-friendly Windows desktop application for monitoring and automat
 4. Test your configuration:
    - Use "Test Email Connection" to verify SMTP settings
    - Use "Send Test Alert" to test end-to-end delivery
+
+### Customizing Alert Templates
+
+For download/no-activity alerts, you can customize the email subject and body:
+
+1. Enable "Send alerts when no files are downloaded"
+2. In the alert threshold section, edit the "Alert Email Subject" and "Alert Email Body" fields
+3. Use placeholders for dynamic content:
+   - `{threshold}`: Alert threshold in minutes
+   - `{status}`: Monitoring status (running/not running)
+   - `{host}`: FTP server address
+   - `{remote}`: Remote folder path
+   - `{local}`: Local download folder
+   - `{lastActivity}`: Timestamp of last successful download
+   - `{now}`: Current timestamp
+4. Click "Preview" to see how the email will look with current values
+5. Click "Restore Defaults" to reset to original templates
 
 ### Advanced Features
 

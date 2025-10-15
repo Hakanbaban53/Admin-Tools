@@ -608,5 +608,72 @@ namespace FTP_Tool
         }
 
         // Ensure LoadRecipientsFromSettings is called during MainWindow_Loaded in WindowLifecycle.cs
+
+        private void BtnPreviewAlertTemplate_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                if (_settings == null) return;
+
+                var subjectTemplate = !string.IsNullOrWhiteSpace(txtAlertEmailSubjectTemplate?.Text) ? txtAlertEmailSubjectTemplate.Text : _settings.AlertEmailSubjectTemplate;
+                var bodyTemplate = !string.IsNullOrWhiteSpace(txtAlertEmailBodyTemplate?.Text) ? txtAlertEmailBodyTemplate.Text : _settings.AlertEmailBodyTemplate;
+
+                var now = DateTime.Now;
+                var lastActivity = (_lastSuccessfulCheck != DateTime.MinValue) ? _lastSuccessfulCheck : (_monitoringStartedAt != DateTime.MinValue ? _monitoringStartedAt : now);
+                var monitoringStatus = IsMonitoringActive ? "Monitoring is running" : "Monitoring is NOT running";
+
+                string host = string.Empty, remote = string.Empty, local = string.Empty;
+                try { host = txtHost.Text.Trim(); } catch { host = _settings.Host ?? string.Empty; }
+                try { remote = txtRemoteFolder.Text.Trim(); } catch { remote = _settings.RemoteFolder ?? string.Empty; }
+                try { local = txtLocalFolder.Text.Trim(); } catch { local = _settings.LocalFolder ?? string.Empty; }
+
+                var subject = subjectTemplate.Replace("{threshold}", _settings.AlertThresholdMinutes.ToString())
+                                              .Replace("{status}", monitoringStatus)
+                                              .Replace("{host}", host)
+                                              .Replace("{remote}", remote)
+                                              .Replace("{local}", local)
+                                              .Replace("{lastActivity}", lastActivity.ToString("yyyy-MM-dd HH:mm:ss"))
+                                              .Replace("{now}", now.ToString("yyyy-MM-dd HH:mm:ss"));
+
+                var body = bodyTemplate.Replace("{threshold}", _settings.AlertThresholdMinutes.ToString())
+                                           .Replace("{status}", monitoringStatus)
+                                           .Replace("{host}", host)
+                                           .Replace("{remote}", remote)
+                                           .Replace("{local}", local)
+                                           .Replace("{lastActivity}", lastActivity.ToString("yyyy-MM-dd HH:mm:ss"))
+                                           .Replace("{now}", now.ToString("yyyy-MM-dd HH:mm:ss"));
+
+                var preview = $"Subject:\n{subject}\n\nBody:\n{body}";
+                System.Windows.MessageBox.Show(preview, "Alert Template Preview", MessageBoxButton.OK, MessageBoxImage.Information);
+            }
+            catch (Exception ex)
+            {
+                Log($"Preview failed: {ex.Message}", LogLevel.Error);
+                try { System.Windows.MessageBox.Show($"Failed to generate preview: {ex.Message}", "Preview Error", MessageBoxButton.OK, MessageBoxImage.Error); } catch { }
+            }
+        }
+
+        private void BtnRestoreAlertTemplates_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                const string defaultSubject = "FTP Monitor - No downloads for {threshold} minutes";
+                const string defaultBody = "No downloads detected for at least {threshold} minutes.\n\nStatus: {status}\nHost: {host}\nRemote folder: {remote}\nLocal folder: {local}\nLast activity: {lastActivity}\nNow: {now}";
+
+                if (txtAlertEmailSubjectTemplate != null) txtAlertEmailSubjectTemplate.Text = defaultSubject;
+                if (txtAlertEmailBodyTemplate != null) txtAlertEmailBodyTemplate.Text = defaultBody;
+
+                _settings.AlertEmailSubjectTemplate = defaultSubject;
+                _settings.AlertEmailBodyTemplate = defaultBody;
+                _ = _settings_service.SaveAsync(_settings);
+
+                Log("Alert email templates restored to defaults", LogLevel.Info);
+            }
+            catch (Exception ex)
+            {
+                Log($"Failed to restore templates: {ex.Message}", LogLevel.Error);
+                try { System.Windows.MessageBox.Show($"Failed to restore templates: {ex.Message}", "Restore Error", MessageBoxButton.OK, MessageBoxImage.Error); } catch { }
+            }
+        }
     }
 }

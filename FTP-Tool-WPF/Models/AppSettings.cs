@@ -60,6 +60,11 @@ namespace FTP_Tool.Models
         // Recipients are stored as a single string separated by ';'
         public string EmailRecipients { get; set; } = string.Empty;
 
+        // Editable templates for inactivity alert email
+        // Placeholders supported: {threshold}, {status}, {host}, {remote}, {local}, {lastActivity}, {now}
+        public string AlertEmailSubjectTemplate { get; set; } = "FTP Monitor - No downloads for {threshold} minutes";
+        public string AlertEmailBodyTemplate { get; set; } = "No downloads detected for at least {threshold} minutes.\n\nStatus: {status}\nHost: {host}\nRemote folder: {remote}\nLocal folder: {local}\nLast activity: {lastActivity}\nNow: {now}";
+
         // --- What to send by email ---
         // Send periodic info summaries (downloads, runtime)
         public bool EmailOnInfo { get; set; } = false;

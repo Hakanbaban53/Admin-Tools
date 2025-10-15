@@ -123,6 +123,14 @@ namespace FTP_Tool
                 txtEmailFrom.Text = _settings.EmailFrom ?? string.Empty;
                 LoadRecipientsFromSettings();
 
+                // Load editable alert templates
+                try
+                {
+                    if (txtAlertEmailSubjectTemplate != null) txtAlertEmailSubjectTemplate.Text = _settings.AlertEmailSubjectTemplate ?? string.Empty;
+                    if (txtAlertEmailBodyTemplate != null) txtAlertEmailBodyTemplate.Text = _settings.AlertEmailBodyTemplate ?? string.Empty;
+                }
+                catch { }
+
                 // Weekday selections
                 try
                 {
@@ -245,6 +253,20 @@ namespace FTP_Tool
                 // Recipient management
                 btnAddRecipient.Click += (s, ev) => BtnAddRecipient_Click(s, ev);
                 btnRemoveRecipient.Click += (s, ev) => BtnRemoveRecipient_Click(s, ev);
+
+                // Template persistence handlers
+                try
+                {
+                    if (txtAlertEmailSubjectTemplate != null)
+                    {
+                        txtAlertEmailSubjectTemplate.LostFocus += (s, ev) => { try { _settings.AlertEmailSubjectTemplate = txtAlertEmailSubjectTemplate.Text; _ = _settings_service.SaveAsync(_settings); } catch { } };
+                    }
+                    if (txtAlertEmailBodyTemplate != null)
+                    {
+                        txtAlertEmailBodyTemplate.LostFocus += (s, ev) => { try { _settings.AlertEmailBodyTemplate = txtAlertEmailBodyTemplate.Text; _ = _settings_service.SaveAsync(_settings); } catch { } };
+                    }
+                }
+                catch { }
 
                 // Weekday changes persist
                 void persist() => PersistWeekdays();
@@ -502,6 +524,10 @@ namespace FTP_Tool
                 // ensure send-downloads persisted
                 try { _settings.SendDownloadAlerts = chkSendDownloadAlerts.IsChecked == true; } catch { }
                 try { _settings.SendAlertsWhenNotMonitoring = chkSendAlertsWhenNotMonitoring.IsChecked == true; } catch { }
+
+                // persist editable email templates
+                try { _settings.AlertEmailSubjectTemplate = txtAlertEmailSubjectTemplate.Text; } catch { }
+                try { _settings.AlertEmailBodyTemplate = txtAlertEmailBodyTemplate.Text; } catch { }
 
                 // persist new email options
                 // (Alert type controls removed from UI - persistence handled elsewhere or removed)

@@ -284,8 +284,26 @@ namespace FTP_Tool
                     }
 
                     var monitoringStatus = IsMonitoringActive ? "Monitoring is running" : "Monitoring is NOT running";
-                    var subject = $"FTP Monitor - No downloads for {_settings.AlertThresholdMinutes} minutes";
-                    var body = $"No downloads detected for at least {_settings.AlertThresholdMinutes} minutes.\n\nStatus: {monitoringStatus}\nHost: {uiHost}\nRemote folder: {uiRemote}\nLocal folder: {uiLocal}\nLast activity: {lastActivity:yyyy-MM-dd HH:mm:ss}\nNow: {now:yyyy-MM-dd HH:mm:ss}";
+
+                    // Build subject and body using templates from settings and simple placeholder replacement
+                    var subjectTemplate = string.IsNullOrWhiteSpace(_settings.AlertEmailSubjectTemplate) ? "FTP Monitor - No downloads for {threshold} minutes" : _settings.AlertEmailSubjectTemplate;
+                    var bodyTemplate = string.IsNullOrWhiteSpace(_settings.AlertEmailBodyTemplate) ? "No downloads detected for at least {threshold} minutes.\n\nStatus: {status}\nHost: {host}\nRemote folder: {remote}\nLocal folder: {local}\nLast activity: {lastActivity}\nNow: {now}" : _settings.AlertEmailBodyTemplate;
+
+                    string subject = subjectTemplate.Replace("{threshold}", _settings.AlertThresholdMinutes.ToString())
+                                                    .Replace("{status}", monitoringStatus)
+                                                    .Replace("{host}", uiHost)
+                                                    .Replace("{remote}", uiRemote)
+                                                    .Replace("{local}", uiLocal)
+                                                    .Replace("{lastActivity}", lastActivity.ToString("yyyy-MM-dd HH:mm:ss"))
+                                                    .Replace("{now}", now.ToString("yyyy-MM-dd HH:mm:ss"));
+
+                    string body = bodyTemplate.Replace("{threshold}", _settings.AlertThresholdMinutes.ToString())
+                                               .Replace("{status}", monitoringStatus)
+                                               .Replace("{host}", uiHost)
+                                               .Replace("{remote}", uiRemote)
+                                               .Replace("{local}", uiLocal)
+                                               .Replace("{lastActivity}", lastActivity.ToString("yyyy-MM-dd HH:mm:ss"))
+                                               .Replace("{now}", now.ToString("yyyy-MM-dd HH:mm:ss"));
 
                     Log("Alert threshold exceeded, sending alert email...", LogLevel.Warning);
                     await _emailService.SendEmailAsync(subject, body).ConfigureAwait(false);
