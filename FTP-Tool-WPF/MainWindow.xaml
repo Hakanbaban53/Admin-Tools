@@ -4,278 +4,11 @@
         xmlns:models="clr-namespace:FTP_Tool.Models"
         xmlns:local="clr-namespace:FTP_Tool"
         Title="FTP File Monitor - Linux to Windows" Height="700" Width="1200" MinWidth="900" MinHeight="600"
-        FontFamily="Segoe UI" Background="#F3F2F1" StateChanged="Window_StateChanged">
+        FontFamily="Segoe UI" Background="{DynamicResource PrimaryBackgroundBrush}" StateChanged="Window_StateChanged"
+        UseLayoutRounding="True" SnapsToDevicePixels="True"
+        TextOptions.TextFormattingMode="Display" TextOptions.TextRenderingMode="ClearType">
 
-    <Window.Resources>
-        <!-- Modern Button Style -->
-        <Style x:Key="ModernButton" TargetType="Button">
-            <Setter Property="Padding" Value="20,10"/>
-            <Setter Property="Margin" Value="4"/>
-            <Setter Property="MinWidth" Value="100"/>
-            <Setter Property="Background" Value="#0078D4"/>
-            <Setter Property="Foreground" Value="White"/>
-            <Setter Property="BorderThickness" Value="0"/>
-            <Setter Property="FontWeight" Value="SemiBold"/>
-            <Setter Property="FontSize" Value="14"/>
-            <Setter Property="Cursor" Value="Hand"/>
-            <Setter Property="Template">
-                <Setter.Value>
-                    <ControlTemplate TargetType="Button">
-                        <Border x:Name="bd" Background="{TemplateBinding Background}" 
-                                BorderThickness="{TemplateBinding BorderThickness}" 
-                                CornerRadius="6" Padding="{TemplateBinding Padding}">
-                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                        </Border>
-                        <ControlTemplate.Triggers>
-                            <Trigger Property="IsMouseOver" Value="True">
-                                <Setter TargetName="bd" Property="Background" Value="#106EBE"/>
-                            </Trigger>
-                            <Trigger Property="IsPressed" Value="True">
-                                <Setter TargetName="bd" Property="Background" Value="#005A9E"/>
-                            </Trigger>
-                            <Trigger Property="IsEnabled" Value="False">
-                                <Setter TargetName="bd" Property="Background" Value="#E1E1E1"/>
-                                <Setter Property="Foreground" Value="#888"/>
-                                <Setter Property="Cursor" Value="Arrow"/>
-                            </Trigger>
-                        </ControlTemplate.Triggers>
-                    </ControlTemplate>
-                </Setter.Value>
-            </Setter>
-        </Style>
-
-        <!-- Secondary Button Style -->
-        <Style x:Key="SecondaryButton" TargetType="Button" BasedOn="{StaticResource ModernButton}">
-            <Setter Property="Background" Value="#FFFFFF"/>
-            <Setter Property="Foreground" Value="#323130"/>
-            <Setter Property="BorderThickness" Value="1"/>
-            <Setter Property="BorderBrush" Value="#D1D1D1"/>
-            <Style.Triggers>
-                <Trigger Property="IsMouseOver" Value="True">
-                    <Setter Property="Background" Value="#F3F2F1"/>
-                    <Setter Property="BorderBrush" Value="#C8C6C4"/>
-                </Trigger>
-                <Trigger Property="IsPressed" Value="True">
-                    <Setter Property="Background" Value="#EDEBE9"/>
-                </Trigger>
-            </Style.Triggers>
-        </Style>
-
-        <!-- Danger Button Style -->
-        <Style x:Key="DangerButton" TargetType="Button" BasedOn="{StaticResource ModernButton}">
-            <Setter Property="Background" Value="#D13438"/>
-            <Style.Triggers>
-                <Trigger Property="IsMouseOver" Value="True">
-                    <Setter Property="Background" Value="#B02E31"/>
-                </Trigger>
-                <Trigger Property="IsPressed" Value="True">
-                    <Setter Property="Background" Value="#A2262A"/>
-                </Trigger>
-            </Style.Triggers>
-        </Style>
-
-        <!-- Sidebar Navigation Button Style -->
-        <Style x:Key="NavButton" TargetType="Button">
-            <Setter Property="Background" Value="Transparent"/>
-            <Setter Property="Foreground" Value="#605E5C"/>
-            <Setter Property="BorderThickness" Value="0"/>
-            <Setter Property="Padding" Value="20,16"/>
-            <Setter Property="HorizontalAlignment" Value="Stretch"/>
-            <Setter Property="HorizontalContentAlignment" Value="Left"/>
-            <Setter Property="FontSize" Value="14"/>
-            <Setter Property="FontWeight" Value="Medium"/>
-            <Setter Property="Cursor" Value="Hand"/>
-            <Setter Property="Template">
-                <Setter.Value>
-                    <ControlTemplate TargetType="Button">
-                        <Border x:Name="bd" Background="{TemplateBinding Background}" 
-                                Padding="{TemplateBinding Padding}"
-                                CornerRadius="0,25,25,0"
-                                Margin="0,0,16,4">
-                            <StackPanel Orientation="Horizontal">
-                                <ContentPresenter/>
-                            </StackPanel>
-                        </Border>
-                        <ControlTemplate.Triggers>
-                            <Trigger Property="IsMouseOver" Value="True">
-                                <Setter TargetName="bd" Property="Background" Value="#F3F2F1"/>
-                            </Trigger>
-                            <Trigger Property="IsPressed" Value="True">
-                                <Setter TargetName="bd" Property="Background" Value="#EDEBE9"/>
-                            </Trigger>
-                        </ControlTemplate.Triggers>
-                    </ControlTemplate>
-                </Setter.Value>
-            </Setter>
-        </Style>
-
-        <!-- Active Navigation Button Style -->
-        <Style x:Key="NavButtonActive" TargetType="Button" BasedOn="{StaticResource NavButton}">
-            <Setter Property="Background" Value="#E3F2FD"/>
-            <Setter Property="Foreground" Value="#0078D4"/>
-            <Setter Property="FontWeight" Value="SemiBold"/>
-        </Style>
-
-        <!-- Modern Card Style -->
-        <Style x:Key="ModernCard" TargetType="Border">
-            <Setter Property="CornerRadius" Value="8"/>
-            <Setter Property="Background" Value="White"/>
-            <Setter Property="Padding" Value="20"/>
-            <Setter Property="Margin" Value="0,0,0,16"/>
-            <Setter Property="BorderThickness" Value="1"/>
-            <Setter Property="BorderBrush" Value="#E1DFDD"/>
-            <Setter Property="Effect">
-                <Setter.Value>
-                    <DropShadowEffect BlurRadius="6" Opacity="0.1" ShadowDepth="2"/>
-                </Setter.Value>
-            </Setter>
-        </Style>
-
-        <!-- Modern TextBox Style -->
-        <Style x:Key="ModernTextBox" TargetType="TextBox">
-            <Setter Property="Padding" Value="12,8"/>
-            <Setter Property="FontSize" Value="14"/>
-            <Setter Property="BorderThickness" Value="2"/>
-            <Setter Property="BorderBrush" Value="#D1D1D1"/>
-            <Setter Property="Background" Value="White"/>
-            <Setter Property="VerticalContentAlignment" Value="Center"/>
-            <Setter Property="Template">
-                <Setter.Value>
-                    <ControlTemplate TargetType="TextBox">
-                        <Border x:Name="border" BorderBrush="{TemplateBinding BorderBrush}" 
-                                BorderThickness="{TemplateBinding BorderThickness}" 
-                                Background="{TemplateBinding Background}" 
-                                CornerRadius="4" SnapsToDevicePixels="True">
-                            <ScrollViewer x:Name="PART_ContentHost" Focusable="false" 
-                                          HorizontalScrollBarVisibility="Hidden" 
-                                          VerticalScrollBarVisibility="Hidden"
-                                          Margin="{TemplateBinding Padding}"/>
-                        </Border>
-                        <ControlTemplate.Triggers>
-                            <Trigger Property="IsFocused" Value="true">
-                                <Setter TargetName="border" Property="BorderBrush" Value="#0078D4"/>
-                            </Trigger>
-                        </ControlTemplate.Triggers>
-                    </ControlTemplate>
-                </Setter.Value>
-            </Setter>
-        </Style>
-
-        <!-- Modern PasswordBox Style -->
-        <Style x:Key="ModernPasswordBox" TargetType="PasswordBox">
-            <Setter Property="Padding" Value="12,8"/>
-            <Setter Property="FontSize" Value="14"/>
-            <Setter Property="BorderThickness" Value="2"/>
-            <Setter Property="BorderBrush" Value="#D1D1D1"/>
-            <Setter Property="Background" Value="White"/>
-            <Setter Property="VerticalContentAlignment" Value="Center"/>
-            <Setter Property="Template">
-                <Setter.Value>
-                    <ControlTemplate TargetType="PasswordBox">
-                        <Border x:Name="border" BorderBrush="{TemplateBinding BorderBrush}" 
-                                BorderThickness="{TemplateBinding BorderThickness}" 
-                                Background="{TemplateBinding Background}" 
-                                CornerRadius="4" SnapsToDevicePixels="True">
-                            <ScrollViewer x:Name="PART_ContentHost" Focusable="false" 
-                                          HorizontalScrollBarVisibility="Hidden" 
-                                          VerticalScrollBarVisibility="Hidden"
-                                          Margin="{TemplateBinding Padding}"/>
-                        </Border>
-                        <ControlTemplate.Triggers>
-                            <Trigger Property="IsFocused" Value="true">
-                                <Setter TargetName="border" Property="BorderBrush" Value="#0078D4"/>
-                            </Trigger>
-                        </ControlTemplate.Triggers>
-                    </ControlTemplate>
-                </Setter.Value>
-            </Setter>
-        </Style>
-
-        <!-- Text Styles -->
-        <Style x:Key="HeaderText" TargetType="TextBlock">
-            <Setter Property="FontSize" Value="16"/>
-            <Setter Property="FontWeight" Value="SemiBold"/>
-            <Setter Property="Foreground" Value="#323130"/>
-            <Setter Property="Margin" Value="0,0,0,16"/>
-        </Style>
-
-        <Style x:Key="LabelText" TargetType="TextBlock">
-            <Setter Property="FontSize" Value="14"/>
-            <Setter Property="Foreground" Value="#605E5C"/>
-            <Setter Property="VerticalAlignment" Value="Center"/>
-        </Style>
-
-        <Style x:Key="StatusText" TargetType="TextBlock">
-            <Setter Property="FontSize" Value="14"/>
-            <Setter Property="Foreground" Value="#323130"/>
-        </Style>
-
-        <Style x:Key="PageTitle" TargetType="TextBlock">
-            <Setter Property="FontSize" Value="28"/>
-            <Setter Property="FontWeight" Value="Bold"/>
-            <Setter Property="Foreground" Value="#323130"/>
-            <Setter Property="Margin" Value="0,0,0,8"/>
-        </Style>
-
-        <Style x:Key="PageSubtitle" TargetType="TextBlock">
-            <Setter Property="FontSize" Value="14"/>
-            <Setter Property="Foreground" Value="#605E5C"/>
-            <Setter Property="Margin" Value="0,0,0,24"/>
-        </Style>
-
-        <!-- Validation error template for showing red border around invalid editing control -->
-        <ControlTemplate x:Key="ValidationErrorTemplate">
-            <Border BorderBrush="Red" BorderThickness="2" CornerRadius="3">
-                <AdornedElementPlaceholder/>
-            </Border>
-        </ControlTemplate>
-
-        <!-- Editing TextBox style used inside DataGrid to show red border and tooltip when invalid -->
-        <Style x:Key="DataGridTextBoxEditingStyle" TargetType="TextBox">
-            <Setter Property="Validation.ErrorTemplate" Value="{StaticResource ValidationErrorTemplate}"/>
-            <Style.Triggers>
-                <Trigger Property="Validation.HasError" Value="True">
-                    <Setter Property="ToolTip" Value="{Binding RelativeSource={RelativeSource Self}, Path=(Validation.Errors)[0].ErrorContent}"/>
-                    <Setter Property="BorderBrush" Value="Red"/>
-                    <Setter Property="BorderThickness" Value="2"/>
-                </Trigger>
-            </Style.Triggers>
-        </Style>
-
-        <!-- Ensure DataGridCells show validation tooltip when the cell has errors -->
-        <Style TargetType="DataGridCell">
-            <Style.Triggers>
-                <Trigger Property="Validation.HasError" Value="True">
-                    <Setter Property="ToolTip" Value="{Binding RelativeSource={RelativeSource Self}, Path=(Validation.Errors)[0].ErrorContent}"/>
-                </Trigger>
-            </Style.Triggers>
-        </Style>
-
-        <!-- Log entry DataTemplate -->
-        <DataTemplate x:Key="LogEntryTemplate">
-            <TextBlock Text="{Binding Formatted}" TextWrapping="Wrap">
-                <TextBlock.Style>
-                    <Style TargetType="TextBlock">
-                        <Setter Property="Foreground" Value="#323130"/>
-                        <Style.Triggers>
-                            <DataTrigger Binding="{Binding Level}" Value="Debug">
-                                <Setter Property="Foreground" Value="#8A8A8A"/>
-                            </DataTrigger>
-                            <DataTrigger Binding="{Binding Level}" Value="Info">
-                                <Setter Property="Foreground" Value="#6BB6FF"/>
-                            </DataTrigger>
-                            <DataTrigger Binding="{Binding Level}" Value="Warning">
-                                <Setter Property="Foreground" Value="#FFCC00"/>
-                            </DataTrigger>
-                            <DataTrigger Binding="{Binding Level}" Value="Error">
-                                <Setter Property="Foreground" Value="#D13438"/>
-                            </DataTrigger>
-                        </Style.Triggers>
-                    </Style>
-                </TextBlock.Style>
-            </TextBlock>
-        </DataTemplate>
-    </Window.Resources>
+    <!-- Resources are provided at Application level via App.xaml merged dictionaries -->
 
     <Grid>
         <Grid.ColumnDefinitions>
@@ -284,13 +17,13 @@
         </Grid.ColumnDefinitions>
 
         <!-- Sidebar Navigation -->
-        <Border x:Name="SidebarBorder" Grid.Column="0" Background="#FAFAFA" BorderBrush="#E1DFDD" BorderThickness="0,0,1,0">
+        <Border x:Name="SidebarBorder" Grid.Column="0" Background="{DynamicResource SecondaryBackgroundBrush}" BorderBrush="{DynamicResource PrimaryBorderBrush}" BorderThickness="0,0,1,0">
             <StackPanel>
                 <!-- App Logo/Title -->
-                <Border Background="#0078D4" Padding="20">
+                <Border Background="{DynamicResource HeaderBackgroundBrush}" Padding="20">
                     <StackPanel>
-                        <TextBlock Text="FTP Monitor" FontSize="18" FontWeight="Bold" Foreground="White"/>
-                        <TextBlock Text="File Transfer Tool" FontSize="12" Foreground="#E1F5FE"/>
+                        <TextBlock Text="FTP Monitor" FontSize="18" FontWeight="Bold" Foreground="{DynamicResource InvertedTextBrush}"/>
+                        <TextBlock Text="File Transfer Tool" FontSize="12" Foreground="{DynamicResource InvertedTextBrush}"/>
                     </StackPanel>
                 </Border>
 
@@ -326,21 +59,21 @@
                 </StackPanel>
 
                 <!-- Bottom Status -->
-                <StackPanel VerticalAlignment="Bottom" Margin="20" Background="White"
+                <StackPanel VerticalAlignment="Bottom" Margin="20" Background="{DynamicResource CardBackgroundBrush}"
                            Height="100">
-                    <Border CornerRadius="4" Padding="12" Background="#F8F9FA">
+                    <Border CornerRadius="4" Padding="12" Background="{DynamicResource StatusInfoBackgroundBrush}">
                         <StackPanel>
                             <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
-                                <Ellipse x:Name="ellipseNavStatus" Width="8" Height="8" Fill="#6BB6FF" 
+                                <Ellipse x:Name="ellipseNavStatus" Width="8" Height="8" Fill="{DynamicResource InfoBrush}" 
                                          VerticalAlignment="Center" Margin="0,0,8,0"/>
-                                <TextBlock x:Name="txtNavStatus" Text="Ready" FontSize="12" FontWeight="SemiBold"/>
+                                <TextBlock x:Name="txtNavStatus" Text="Ready" FontSize="12" FontWeight="SemiBold" Foreground="{DynamicResource PrimaryTextBrush}"/>
                             </StackPanel>
                             
-                            <TextBlock x:Name="txtNavFiles" Text="No files monitored" FontSize="11" Foreground="#605E55" Margin="0,2,0,0"/>
-                            <TextBlock x:Name="txtNavRemote" Text="Remote: 0 files" FontSize="11" Foreground="#605E5C" Margin="0,1,0,0"/>
-                            <TextBlock x:Name="txtNavErrors" Text="Errors: 0" FontSize="11" Foreground="#605E5C" Margin="0,1,0,0"/>
-                            <TextBlock x:Name="txtNavLastCheck" Text="Last: Never" FontSize="11" Foreground="#605E5C" Margin="0,1,0,0"/>
-                            <TextBlock x:Name="txtNavLastAlert" Text="Last alert: -" FontSize="11" Foreground="#605E5C" Margin="0,1,0,0"/>
+                            <TextBlock x:Name="txtNavFiles" Text="No files monitored" FontSize="11" Foreground="{DynamicResource SecondaryTextBrush}" Margin="0,2,0,0"/>
+                            <TextBlock x:Name="txtNavRemote" Text="Remote: 0 files" FontSize="11" Foreground="{DynamicResource SecondaryTextBrush}" Margin="0,1,0,0"/>
+                            <TextBlock x:Name="txtNavErrors" Text="Errors: 0" FontSize="11" Foreground="{DynamicResource SecondaryTextBrush}" Margin="0,1,0,0"/>
+                            <TextBlock x:Name="txtNavLastCheck" Text="Last: Never" FontSize="11" Foreground="{DynamicResource SecondaryTextBrush}" Margin="0,1,0,0"/>
+                            <TextBlock x:Name="txtNavLastAlert" Text="Last alert: -" FontSize="11" Foreground="{DynamicResource SecondaryTextBrush}" Margin="0,1,0,0"/>
                         </StackPanel>
                     </Border>
                 </StackPanel>
@@ -355,7 +88,7 @@
             </Button>
 
             <!-- Monitor Page (Default) -->
-            <Grid x:Name="MonitorPage" Visibility="Collapsed">
+            <Grid x:Name="MonitorPage" Visibility="Visible">
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto"/>
                     <RowDefinition Height="*"/>
@@ -444,7 +177,7 @@
                                                         <TextBlock Text="Test"/>
                                                     </StackPanel>
                                                 </Button>
-                                                <TextBlock Text="(Test also saves credentials if it succeeds)" FontSize="11" Foreground="#605E5C" Margin="4,6,0,0" HorizontalAlignment="Center" TextWrapping="Wrap" Width="140" TextAlignment="Center"/>
+                    <TextBlock Text="(Test also saves credentials if it succeeds)" FontSize="11" Foreground="{DynamicResource SecondaryTextBrush}" Margin="4,6,0,0" HorizontalAlignment="Center" TextWrapping="Wrap" Width="140" TextAlignment="Center"/>
                                             </StackPanel>
                                         </Grid>
                                     </StackPanel>
@@ -547,7 +280,7 @@
                                     </UniformGrid>
 
                                     <!-- Status Bar -->
-                                    <Border Background="#F5F5F5" CornerRadius="6" Padding="12" Margin="0,12,0,0">
+                                    <Border Background="{DynamicResource SecondaryBackgroundBrush}" CornerRadius="6" Padding="12" Margin="0,12,0,0">
                                         <Grid>
                                             <Grid.ColumnDefinitions>
                                                 <ColumnDefinition Width="*"/>
@@ -562,7 +295,7 @@
 
                                             <StackPanel Grid.Column="1">
                                                 <TextBlock x:Name="lblDownloaded" Text="0 files" 
-                                               Foreground="#107C10" FontWeight="SemiBold" FontSize="13"/>
+                                               Foreground="{DynamicResource SuccessBrush}" FontWeight="SemiBold" FontSize="13"/>
                                             </StackPanel>
                                         </Grid>
                                     </Border>
@@ -604,7 +337,7 @@
                                     <!-- Current Status with Indicator -->
                                     <StackPanel Grid.Row="0" Grid.Column="0" Orientation="Horizontal" Margin="0,0,0,8">
                                         <Ellipse x:Name="ellipseStatus" Width="12" Height="12" 
-                                     Fill="#6BB6FF" VerticalAlignment="Center" Margin="0,0,10,0"/>
+                                     Fill="{DynamicResource InfoBrush}" VerticalAlignment="Center" Margin="0,0,10,0"/>
                                         <TextBlock Text="Status:" FontWeight="SemiBold" 
                                        Style="{StaticResource LabelText}"/>
                                     </StackPanel>
@@ -625,7 +358,7 @@
                                    FontWeight="SemiBold" Style="{StaticResource LabelText}" 
                                    Margin="22,0,0,0" VerticalAlignment="Top"/>
                                     <TextBlock Grid.Row="2" Grid.Column="1" x:Name="txtLastError" 
-                                   Text="-" Foreground="#D13438" TextWrapping="Wrap" 
+                                   Text="-" Foreground="{DynamicResource DangerBrush}" TextWrapping="Wrap" 
                                    Style="{StaticResource StatusText}" MaxHeight="60"
                                    ToolTip="{Binding Text, RelativeSource={RelativeSource Self}}"/>
 
@@ -634,7 +367,7 @@
                                    FontWeight="SemiBold" Style="{StaticResource LabelText}" 
                                    Margin="22,0,0,0" VerticalAlignment="Top"/>
                                     <TextBlock Grid.Row="3" Grid.Column="1" x:Name="txtLastAlert" 
-                                   Text="-" Foreground="#FF8C00" TextWrapping="Wrap" 
+                                   Text="-" Foreground="{DynamicResource WarningBrush}" TextWrapping="Wrap" 
                                    Style="{StaticResource StatusText}" MaxHeight="60"
                                    ToolTip="{Binding Text, RelativeSource={RelativeSource Self}}"/>
                                 </Grid>
@@ -659,8 +392,8 @@
                                 </Grid>
 
                                 <!-- Log ListBox with better styling -->
-                                <Border BorderBrush="#E0E0E0" BorderThickness="1" CornerRadius="4" 
-                            Background="#FAFAFA">
+                                <Border BorderBrush="{DynamicResource SecondaryBorderBrush}" BorderThickness="1" CornerRadius="4" 
+                            Background="{DynamicResource SecondaryBackgroundBrush}">
                                     <ListBox x:Name="lstLog" 
                                  ItemsSource="{Binding RelativeSource={RelativeSource AncestorType=Window}, Path=DisplayedLogEntriesPublic}"
                                  ItemTemplate="{StaticResource LogEntryTemplate}" 
@@ -710,6 +443,13 @@
                                     <ComboBox x:Name="cmbStartupMode" Width="220" FontSize="14" ToolTip="Choose whether the app should open the main window or start minimized to tray when launched by Windows at login.">
                                         <ComboBoxItem Content="Open window"/>
                                         <ComboBoxItem Content="Start minimized to tray"/>
+                                    </ComboBox>
+                                </StackPanel>
+                                <StackPanel Orientation="Horizontal" Margin="0,0,0,12">
+                                    <TextBlock VerticalAlignment="Center" Text="Theme:" Margin="0,0,12,0"/>
+                                    <ComboBox x:Name="cmbTheme" Width="220" FontSize="14" ToolTip="Select application theme (Light or Dark)">
+                                        <ComboBoxItem Content="Light"/>
+                                        <ComboBoxItem Content="Dark"/>
                                     </ComboBox>
                                 </StackPanel>
                                 <CheckBox x:Name="chkMinimizeToTray" Content="Minimize to system tray when closed" FontSize="14" Margin="0,0,0,12" ToolTip="When enabled, closing the window hides the app to the system tray. Use the tray icon to restore or exit."/>
@@ -823,7 +563,7 @@
                         <Border Style="{StaticResource ModernCard}">
                             <StackPanel>
                                 <TextBlock Text="🔐 Saved Credentials" Style="{StaticResource HeaderText}"/>
-                                <TextBlock Text="Manage saved FTP credentials stored in Windows Credential Manager." Margin="0,0,0,8" Foreground="#605E5C"/>
+                                <TextBlock Text="Manage saved FTP credentials stored in Windows Credential Manager." Margin="0,0,0,8" Foreground="{DynamicResource SecondaryTextBrush}"/>
 
                                 <Grid>
                                     <Grid.RowDefinitions>
@@ -832,7 +572,9 @@
                                         <RowDefinition Height="Auto"/>
                                     </Grid.RowDefinitions>
 
-                                    <ListBox x:Name="lstSavedCredentials" Grid.Row="1" MinHeight="100" Margin="0,8,0,8"/>
+                                    <ListBox x:Name="lstSavedCredentials" Grid.Row="1" MinHeight="100" Margin="0,8,0,8"
+                                             Background="Transparent" BorderThickness="0"
+                                             Foreground="{DynamicResource PrimaryTextBrush}"/>
 
                                     <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Left">
                                         <Button x:Name="btnRefreshCredentials" Click="BtnRefreshCredentials_Click" Style="{StaticResource SecondaryButton}" Margin="0,0,8,0">Refresh</Button>
@@ -872,7 +614,7 @@
                                 </StackPanel>
 
                                 <TextBlock Text="Configure SMTP settings for sending email notifications" 
-                               Foreground="#605E5C" FontSize="13" Margin="0,-8,0,8"/>
+                               Foreground="{DynamicResource SecondaryTextBrush}" FontSize="13" Margin="0,-8,0,8"/>
 
                                 <!-- SMTP Settings Grid -->
                                 <Grid>
@@ -906,7 +648,7 @@
 
                                     <!-- Credentials Section -->
                                     <Border Grid.Row="2" Grid.ColumnSpan="2" 
-                                Background="#F8F9FA" CornerRadius="4" Padding="16" Margin="0,16,0,0">
+                                Background="{DynamicResource StatusInfoBackgroundBrush}" CornerRadius="4" Padding="16" Margin="0,16,0,0">
                                         <Grid>
                                             <Grid.RowDefinitions>
                                                 <RowDefinition Height="Auto"/>
@@ -936,9 +678,9 @@
                                     <!-- Recipients Section -->
                                     <TextBlock Grid.Row="4" Grid.Column="0" Text="Recipients:" Style="{StaticResource LabelText}" VerticalAlignment="Top" Margin="0,16,0,0"/>
                                     <StackPanel Grid.Row="4" Grid.Column="1" Margin="0,16,0,0">
-                                        <Border BorderBrush="#E1E5E9" BorderThickness="1" CornerRadius="4" Padding="8">
+                                        <Border BorderBrush="{DynamicResource SecondaryBorderBrush}" BorderThickness="1" CornerRadius="4" Padding="8">
                                             <StackPanel>
-                                                <TextBlock Text="Email Recipients" FontSize="12" Foreground="#605E5C" Margin="0,0,0,4"/>
+                                        <TextBlock Text="Email Recipients" FontSize="12" Foreground="{DynamicResource SecondaryTextBrush}" Margin="0,0,0,4"/>
                                                 <ListBox x:Name="lstEmailRecipients" Height="80" BorderThickness="0" Background="Transparent"/>
                                             </StackPanel>
                                         </Border>
@@ -992,7 +734,7 @@
                                 </StackPanel>
 
                                 <!-- Master Toggle -->
-                                <Border Background="#E8F5E8" BorderBrush="#28A745" BorderThickness="1" CornerRadius="4" Padding="12" Margin="0,16,0,0">
+                    <Border Background="{DynamicResource StatusInfoBackgroundBrush}" BorderBrush="{DynamicResource SuccessBrush}" BorderThickness="1" CornerRadius="4" Padding="12" Margin="0,16,0,0">
                                     <CheckBox x:Name="chkAlertsEnabled" Content="Enable email alerts" FontSize="14" FontWeight="SemiBold"/>
                                 </Border>
 
@@ -1011,7 +753,7 @@
                                         <TextBlock Text="Schedule Mode" Style="{StaticResource LabelText}" FontWeight="SemiBold" Margin="0,0,0,12"/>
                                         
                                         <!-- Mode 1: 24/7 - ignores both days and hours -->
-                                        <Border Background="#FFF3CD" BorderBrush="#FFC107" BorderThickness="2" CornerRadius="6" Padding="14" Margin="0,0,0,12">
+                                        <Border Background="{DynamicResource WarningBrush}" BorderBrush="{DynamicResource WarningBrush}" BorderThickness="2" CornerRadius="6" Padding="14" Margin="0,0,0,12">
                                             <StackPanel>
                                                 <CheckBox x:Name="chkAlertAlways" FontWeight="SemiBold" FontSize="14">
                                                     <StackPanel Orientation="Horizontal">
@@ -1020,12 +762,12 @@
                                                     </StackPanel>
                                                 </CheckBox>
                                                 <TextBlock Text="Alerts will be sent every day, all hours. All schedule settings below are ignored." 
-                                                           FontSize="11" Foreground="#856404" Margin="28,6,0,0" TextWrapping="Wrap"/>
+                                                           FontSize="11" Foreground="{DynamicResource SecondaryTextBrush}" Margin="28,6,0,0" TextWrapping="Wrap"/>
                                             </StackPanel>
                                         </Border>
 
                                         <!-- Mode 2: All Day - respects selected days but ignores hours -->
-                                        <Border Background="#E7F3FF" BorderBrush="#0078D4" BorderThickness="2" CornerRadius="6" Padding="14" Margin="0,0,0,12">
+                                        <Border Background="{DynamicResource NavButtonActiveBackgroundBrush}" BorderBrush="{DynamicResource AccentBrush}" BorderThickness="2" CornerRadius="6" Padding="14" Margin="0,0,0,12">
                                             <StackPanel>
                                                 <CheckBox x:Name="chkAllDay" FontWeight="SemiBold" FontSize="14">
                                                     <StackPanel Orientation="Horizontal">
@@ -1034,12 +776,12 @@
                                                     </StackPanel>
                                                 </CheckBox>
                                                 <TextBlock Text="Alerts sent throughout the entire day on selected days below. Work shift times are ignored." 
-                                                           FontSize="11" Foreground="#0078D4" Margin="28,6,0,0" TextWrapping="Wrap"/>
+                                                           FontSize="11" Foreground="{DynamicResource AccentBrush}" Margin="28,6,0,0" TextWrapping="Wrap"/>
                                             </StackPanel>
                                         </Border>
 
                                         <!-- Mode 3: Custom Schedule - use shift-based timing -->
-                                        <Border Background="#F0F0F0" BorderBrush="#6C757D" BorderThickness="2" CornerRadius="6" Padding="14">
+                                        <Border Background="{DynamicResource SecondaryBackgroundBrush}" BorderBrush="{DynamicResource SecondaryBorderBrush}" BorderThickness="2" CornerRadius="6" Padding="14">
                                             <StackPanel>
                                                 <CheckBox x:Name="chkUseMultiShift" FontWeight="SemiBold" FontSize="14">
                                                     <StackPanel Orientation="Horizontal">
@@ -1048,7 +790,7 @@
                                                     </StackPanel>
                                                 </CheckBox>
                                                 <TextBlock Text="Define specific work shifts and break periods. Alerts sent only during active shifts on selected days." 
-                                                           FontSize="11" Foreground="#495057" Margin="28,6,0,0" TextWrapping="Wrap"/>
+                                                           FontSize="11" Foreground="{DynamicResource SecondaryTextBrush}" Margin="28,6,0,0" TextWrapping="Wrap"/>
                                             </StackPanel>
                                         </Border>
                                     </StackPanel>
@@ -1056,7 +798,7 @@
                                     <!-- Days of week (hidden when 24/7 is enabled) -->
                                     <StackPanel Grid.Row="2" Margin="0,20,0,0" x:Name="pnlWeekdays">
                                         <TextBlock Text="Active Days" FontSize="14" FontWeight="SemiBold" Margin="0,0,0,8"/>
-                                        <Border Background="#F8F9FA" CornerRadius="4" Padding="16">
+                                        <Border Background="{DynamicResource StatusInfoBackgroundBrush}" CornerRadius="4" Padding="16">
                                             <WrapPanel>
                                                 <CheckBox x:Name="chkMon" Content="Monday" MinWidth="110" Margin="0,0,12,8"/>
                                                 <CheckBox x:Name="chkTue" Content="Tuesday" MinWidth="110" Margin="0,0,12,8"/>
@@ -1070,14 +812,14 @@
                                     </StackPanel>
 
                                     <!-- Work Shifts & Excluded Intervals (shown only when Custom Schedule is enabled) -->
-                                    <Border Grid.Row="3" x:Name="pnlShiftTables" Background="#F8F9FA" CornerRadius="6" Padding="20" Margin="0,20,0,0">
+                                    <Border Grid.Row="3" x:Name="pnlShiftTables" Background="{DynamicResource StatusInfoBackgroundBrush}" CornerRadius="6" Padding="20" Margin="0,20,0,0">
                                         <StackPanel>
                                             <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
                                                 <TextBlock Text="⏰" FontSize="16" Margin="0,0,8,0" VerticalAlignment="Center"/>
                                                 <TextBlock Text="Shift Configuration" FontWeight="SemiBold" FontSize="14" VerticalAlignment="Center"/>
                                             </StackPanel>
                                             <TextBlock Text="Configure work shifts and break periods. Use 24-hour format (HH:mm). Supports overnight shifts (e.g., 22:00-06:00)." 
-                                                       FontSize="12" Foreground="#605E5C" Margin="0,0,0,16" TextWrapping="Wrap"/>
+                                                       FontSize="12" Foreground="{DynamicResource SecondaryTextBrush}" Margin="0,0,0,16" TextWrapping="Wrap"/>
 
                                             <Grid>
                                                 <Grid.ColumnDefinitions>
@@ -1089,11 +831,11 @@
                                                 <!-- Work Shifts DataGrid -->
                                                 <StackPanel Grid.Column="0">
                                                     <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
-                                                        <TextBlock Text="✓" FontSize="14" Foreground="#28A745" Margin="0,0,6,0" VerticalAlignment="Center"/>
+                                                        <TextBlock Text="✓" FontSize="14" Foreground="{DynamicResource SuccessBrush}" Margin="0,0,6,0" VerticalAlignment="Center"/>
                                                         <TextBlock Text="Active Work Shifts" FontWeight="SemiBold"/>
                                                     </StackPanel>
-                                                    <TextBlock Text="Define when alerts should be active. Double-click to edit, press Tab to add new row." 
-                                                               FontSize="11" Foreground="#605E5C" Margin="0,0,0,8" TextWrapping="Wrap"/>
+                                                        <TextBlock Text="Define when alerts should be active. Double-click to edit, press Tab to add new row." 
+                                                               FontSize="11" Foreground="{DynamicResource SecondaryTextBrush}" Margin="0,0,0,8" TextWrapping="Wrap"/>
 
                                                     <DataGrid x:Name="dgWorkShifts" AutoGenerateColumns="False" CanUserAddRows="True" CanUserDeleteRows="True" 
                                                               HeadersVisibility="Column" Height="160" IsReadOnly="False" GridLinesVisibility="None" RowHeaderWidth="0"
@@ -1124,11 +866,11 @@
                                                 <!-- Excluded Intervals DataGrid -->
                                                 <StackPanel Grid.Column="2">
                                                     <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
-                                                        <TextBlock Text="✗" FontSize="14" Foreground="#DC3545" Margin="0,0,6,0" VerticalAlignment="Center"/>
+                                                        <TextBlock Text="✗" FontSize="14" Foreground="{DynamicResource DangerBrush}" Margin="0,0,6,0" VerticalAlignment="Center"/>
                                                         <TextBlock Text="Break/Excluded Periods" FontWeight="SemiBold"/>
                                                     </StackPanel>
                                                     <TextBlock Text="Times when alerts should be suppressed (lunch breaks, etc.). Double-click to edit." 
-                                                               FontSize="11" Foreground="#605E5C" Margin="0,0,0,8" TextWrapping="Wrap"/>
+                                                               FontSize="11" Foreground="{DynamicResource SecondaryTextBrush}" Margin="0,0,0,8" TextWrapping="Wrap"/>
 
                                                     <DataGrid x:Name="dgExcluded" AutoGenerateColumns="False" CanUserAddRows="True" CanUserDeleteRows="True" 
                                                               HeadersVisibility="Column" Height="160" IsReadOnly="False" GridLinesVisibility="None" RowHeaderWidth="0"
@@ -1158,13 +900,13 @@
                                             </Grid>
 
                                             <!-- Example shifts -->
-                                            <Border Background="#E7F3FF" BorderBrush="#0078D4" BorderThickness="1" CornerRadius="4" Padding="12" Margin="0,16,0,0">
+                                            <Border Background="{DynamicResource NavButtonActiveBackgroundBrush}" BorderBrush="{DynamicResource AccentBrush}" BorderThickness="1" CornerRadius="4" Padding="12" Margin="0,16,0,0">
                                                 <StackPanel>
-                                                    <TextBlock Text="💡 Examples:" FontWeight="SemiBold" FontSize="12" Margin="0,0,0,6"/>
-                                                    <TextBlock Text="• Single shift: 08:00-17:00" FontSize="11" Margin="0,0,0,3"/>
-                                                    <TextBlock Text="• Split shifts: 08:00-12:00, 13:00-17:00 (lunch handled by breaks)" FontSize="11" Margin="0,0,0,3"/>
-                                                    <TextBlock Text="• Night shift: 22:00-06:00 (crosses midnight)" FontSize="11" Margin="0,0,0,3"/>
-                                                    <TextBlock Text="• Break example: 12:00-13:00 (lunch hour)" FontSize="11"/>
+                                                    <TextBlock Text="💡 Examples:" FontWeight="SemiBold" FontSize="12" Margin="0,0,0,6" Foreground="{DynamicResource PrimaryTextBrush}"/>
+                                                    <TextBlock Text="• Single shift: 08:00-17:00" FontSize="11" Margin="0,0,0,3" Foreground="{DynamicResource SecondaryTextBrush}"/>
+                                                    <TextBlock Text="• Split shifts: 08:00-12:00, 13:00-17:00 (lunch handled by breaks)" FontSize="11" Margin="0,0,0,3" Foreground="{DynamicResource SecondaryTextBrush}"/>
+                                                    <TextBlock Text="• Night shift: 22:00-06:00 (crosses midnight)" FontSize="11" Margin="0,0,0,3" Foreground="{DynamicResource SecondaryTextBrush}"/>
+                                                    <TextBlock Text="• Break example: 12:00-13:00 (lunch hour)" FontSize="11" Foreground="{DynamicResource SecondaryTextBrush}"/>
                                                 </StackPanel>
                                             </Border>
                                         </StackPanel>
@@ -1173,7 +915,8 @@
                                     <!-- Alert Threshold -->
                                     <StackPanel Grid.Row="4" Margin="0,20,0,0">
                                         <TextBlock Text="Download Activity Alerts" Style="{StaticResource LabelText}" FontWeight="SemiBold" Margin="0,0,0,8"/>
-                                        <Border Background="#F8F9FA" CornerRadius="4" Padding="16">
+                                        <!-- Use theme brush so this panel respects dark/light themes -->
+                                        <Border Background="{DynamicResource StatusInfoBackgroundBrush}" CornerRadius="4" Padding="16">
                                             <StackPanel>
                                                 <CheckBox x:Name="chkSendDownloadAlerts" Content="Send alerts when no files are downloaded" FontSize="13" FontWeight="SemiBold" Margin="0,0,0,12"/>
                                                 
@@ -1210,7 +953,7 @@
                                                             </StackPanel>
                                                         </Button>
 
-                                                        <TextBlock Text="Preview substitutes placeholders with current values." FontSize="11" Foreground="#605E5C" VerticalAlignment="Center" Margin="12,0,0,0"/>
+                                        <TextBlock Text="Preview substitutes placeholders with current values." FontSize="11" Foreground="{DynamicResource SecondaryTextBrush}" VerticalAlignment="Center" Margin="12,0,0,0"/>
                                                     </StackPanel>
                                                 </StackPanel>
                                             </StackPanel>
@@ -1218,12 +961,12 @@
                                     </StackPanel>
 
                                     <!-- Help Text -->
-                                    <Border Grid.Row="5" Background="#FFF9E6" BorderBrush="#FFC107" BorderThickness="1" CornerRadius="6" Padding="16" Margin="0,24,0,0">
+                                    <Border Grid.Row="5" Background="{DynamicResource StatusInfoBackgroundBrush}" BorderBrush="{DynamicResource WarningBrush}" BorderThickness="1" CornerRadius="6" Padding="16" Margin="0,24,0,0">
                                         <StackPanel>
                                             <TextBlock Text="ℹ️ How Alert Schedules Work" FontWeight="SemiBold" FontSize="13" Margin="0,0,0,12"/>
                                             
 
-                                            <TextBlock Text="Schedule Modes:" FontWeight="SemiBold" FontSize="12" Margin="0,0,0,6"/>
+                                        <TextBlock Text="Schedule Modes:" FontWeight="SemiBold" FontSize="12" Margin="0,0,0,6" Foreground="{DynamicResource PrimaryTextBrush}"/>
                                             <TextBlock Text="• 24/7 Mode: Alerts sent continuously, ignoring all day/time settings" FontSize="11" Margin="0,0,0,3"/>
                                             <TextBlock Text="• All Day Mode: Alerts sent throughout entire day on selected weekdays" FontSize="11" Margin="0,0,0,3"/>
                                             <TextBlock Text="• Custom Schedule: Alerts only during defined work shifts on selected days" FontSize="11" Margin="0,0,0,12"/>
@@ -1259,7 +1002,7 @@
             </Grid>
 
             <!-- Floating in-window sidebar was moved into the main content Grid to ensure it slides over content area -->
-            <Border x:Name="FloatingSidebar" Background="#FAFAFA" BorderBrush="#E1DFDD" BorderThickness="2"
+            <Border x:Name="FloatingSidebar" Background="{DynamicResource SecondaryBackgroundBrush}" BorderBrush="{DynamicResource PrimaryBorderBrush}" BorderThickness="2"
                     Width="260" VerticalAlignment="Stretch" HorizontalAlignment="Left" Visibility="Collapsed"
                     RenderTransformOrigin="0.5,0.5" Panel.ZIndex="10" ClipToBounds="True"
                     CornerRadius="16">
@@ -1267,7 +1010,7 @@
                     <TranslateTransform X="-260" />
                 </Border.RenderTransform>
                 <StackPanel>
-                    <Border Background="#0078D4" Padding="20" CornerRadius="16,16,0,0">
+                    <Border Background="{DynamicResource HeaderBackgroundBrush}" Padding="20" CornerRadius="16,16,0,0">
                         <StackPanel>
                             <TextBlock Text="FTP Monitor" FontSize="18" FontWeight="Bold" Foreground="White"/>
                             <TextBlock Text="File Transfer Tool" FontSize="12" Foreground="#E1F5FE"/>
@@ -1304,21 +1047,21 @@
                         </Button>
                     </StackPanel>
                     <!-- Bottom Status -->
-                    <StackPanel VerticalAlignment="Bottom" Margin="20" Background="White"
+                    <StackPanel VerticalAlignment="Bottom" Margin="20" Background="{DynamicResource CardBackgroundBrush}"
            Height="100">
-                        <Border CornerRadius="4" Padding="12" Background="#F8F9FA">
+                        <Border CornerRadius="4" Padding="12" Background="{DynamicResource StatusInfoBackgroundBrush}">
                             <StackPanel>
                                 <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
-                                    <Ellipse x:Name="ellipseFloatingNavStatus" Width="8" Height="8" Fill="#6BB6FF" 
+                                    <Ellipse x:Name="ellipseFloatingNavStatus" Width="8" Height="8" Fill="{DynamicResource InfoBrush}" 
                          VerticalAlignment="Center" Margin="0,0,8,0"/>
                                     <TextBlock x:Name="txtFloatingNavStatus" Text="Ready" FontSize="12" FontWeight="SemiBold"/>
                                 </StackPanel>
 
-                                <TextBlock x:Name="txtFloatingNavFiles" Text="No files monitored" FontSize="11" Foreground="#605E5C" Margin="0,2,0,0"/>
-                                <TextBlock x:Name="txtFloatingNavRemote" Text="Remote: 0 files" FontSize="11" Foreground="#605E5C" Margin="0,1,0,0"/>
-                                <TextBlock x:Name="txtFloatingNavErrors" Text="Errors: 0" FontSize="11" Foreground="#605E5C" Margin="0,1,0,0"/>
-                                <TextBlock x:Name="txtFloatingNavLastCheck" Text="Last: Never" FontSize="11" Foreground="#605E5C" Margin="0,1,0,0"/>
-                                <TextBlock x:Name="txtFloatingNavLastAlert" Text="Last alert: -" FontSize="11" Foreground="#605E5C" Margin="0,1,0,0"/>
+                                <TextBlock x:Name="txtFloatingNavFiles" Text="No files monitored" FontSize="11" Foreground="{DynamicResource SecondaryTextBrush}" Margin="0,2,0,0"/>
+                                <TextBlock x:Name="txtFloatingNavRemote" Text="Remote: 0 files" FontSize="11" Foreground="{DynamicResource SecondaryTextBrush}" Margin="0,1,0,0"/>
+                                <TextBlock x:Name="txtFloatingNavErrors" Text="Errors: 0" FontSize="11" Foreground="{DynamicResource SecondaryTextBrush}" Margin="0,1,0,0"/>
+                                <TextBlock x:Name="txtFloatingNavLastCheck" Text="Last: Never" FontSize="11" Foreground="{DynamicResource SecondaryTextBrush}" Margin="0,1,0,0"/>
+                                <TextBlock x:Name="txtFloatingNavLastAlert" Text="Last alert: -" FontSize="11" Foreground="{DynamicResource SecondaryTextBrush}" Margin="0,1,0,0"/>
                             </StackPanel>
                         </Border>
                     </StackPanel>

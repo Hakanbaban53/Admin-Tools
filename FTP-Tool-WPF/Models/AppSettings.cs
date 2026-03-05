@@ -97,6 +97,9 @@ namespace FTP_Tool.Models
         // When true, alerts will be sent even when monitoring is not running (requires SendDownloadAlerts to be true)
         public bool SendAlertsWhenNotMonitoring { get; set; } = false;
 
+        // UI Theme preference: "Light" or "Dark"
+        public string Theme { get; set; } = "Light";
+
         // --- Multi-Shift 24-Hour Support ---
         // When true, use WorkShifts and ExcludedIntervals for alert timing.
         // When false, use AllDay mode (alerts throughout the selected days).

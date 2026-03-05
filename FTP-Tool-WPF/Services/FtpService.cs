@@ -138,7 +138,7 @@ namespace FTP_Tool.Services
         }
 
         /// <summary>
-        /// Lists files in the specified remote folder (returns names only, may include directories)
+        /// Lists files in the specified remote folder (returns names only, excludes directories)
         /// </summary>
         public async Task<string[]> ListFilesAsync(string host, int port, NetworkCredential creds, string remoteFolder, CancellationToken token)
         {
@@ -150,8 +150,24 @@ namespace FTP_Tool.Services
             var result = await Task.Run<string[]>(() =>
             {
                 var folder = NormalizeRemoteFolder(remoteFolder);
-                var listing = client.GetNameListing(folder) ?? [];
-                return [.. listing.Select(p => Path.GetFileName(p.TrimEnd('/'))).Where(n => !string.IsNullOrWhiteSpace(n))];
+                try
+                {
+                    var listing = client.GetListing(folder);
+                    if (listing != null)
+                    {
+                        return [.. listing
+                            .Where(item => item.Type != FtpObjectType.Directory && !string.IsNullOrWhiteSpace(item.Name) && item.Name != "." && item.Name != "..")
+                            .Select(item => item.Name)];
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Logger?.Invoke($"GetListing failed for {folder}, falling back to name listing: {ex.Message}", FTP_Tool.LogLevel.Debug);
+                }
+
+                // Fallback: name listing (may include directories)
+                var nameListing = client.GetNameListing(folder) ?? [];
+                return [.. nameListing.Select(p => Path.GetFileName(p.TrimEnd('/'))).Where(n => !string.IsNullOrWhiteSpace(n))];
             }, token).ConfigureAwait(false);
 
             sw.Stop();

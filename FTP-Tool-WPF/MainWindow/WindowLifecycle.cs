@@ -97,6 +97,37 @@ namespace FTP_Tool
             }
             catch { }
 
+            // Apply theme from settings (before UI fully shown)
+            try
+            {
+                var themeStr = string.IsNullOrWhiteSpace(_settings.Theme) ? "Light" : _settings.Theme;
+                if (string.Equals(themeStr, "System", StringComparison.OrdinalIgnoreCase))
+                {
+                    FTP_Tool.Services.ThemeService.ApplyTheme(FTP_Tool.Services.ThemeService.Theme.System);
+                }
+                else if (string.Equals(themeStr, "Dark", StringComparison.OrdinalIgnoreCase))
+                {
+                    FTP_Tool.Services.ThemeService.ApplyTheme(FTP_Tool.Services.ThemeService.Theme.Dark);
+                }
+                else
+                {
+                    FTP_Tool.Services.ThemeService.ApplyTheme(FTP_Tool.Services.ThemeService.Theme.Light);
+                }
+
+                // update combobox selection if present
+                try
+                {
+                    if (cmbTheme != null)
+                    {
+                        if (string.Equals(themeStr, "System", StringComparison.OrdinalIgnoreCase)) cmbTheme.SelectedIndex = 2;
+                        else if (string.Equals(themeStr, "Dark", StringComparison.OrdinalIgnoreCase)) cmbTheme.SelectedIndex = 1;
+                        else cmbTheme.SelectedIndex = 0;
+                    }
+                }
+                catch { }
+            }
+            catch { }
+
             // Load saved FTP password from credential store (best-effort)
             try
             {
@@ -206,6 +237,40 @@ namespace FTP_Tool
                     }
                     else { txtConnectionTimeout.Text = _settings.ConnectionTimeoutSeconds.ToString(); }
                 };
+
+                // Theme selection
+                try
+                {
+                    if (cmbTheme != null)
+                    {
+                        // ensure combobox has three items: Light, Dark, System
+                        cmbTheme.Items.Clear();
+                        cmbTheme.Items.Add(new ComboBoxItem() { Content = "Light" });
+                        cmbTheme.Items.Add(new ComboBoxItem() { Content = "Dark" });
+                        cmbTheme.Items.Add(new ComboBoxItem() { Content = "System" });
+
+                        cmbTheme.SelectionChanged += (s, ev) =>
+                        {
+                            try
+                            {
+                                if (cmbTheme.SelectedItem is ComboBoxItem cbi)
+                                {
+                                    var theme = cbi.Content?.ToString() ?? "Light";
+                                    _settings.Theme = theme;
+                                    _ = _settings_service.SaveAsync(_settings);
+                                    if (string.Equals(theme, "System", StringComparison.OrdinalIgnoreCase))
+                                        FTP_Tool.Services.ThemeService.ApplyTheme(FTP_Tool.Services.ThemeService.Theme.System);
+                                    else if (string.Equals(theme, "Dark", StringComparison.OrdinalIgnoreCase))
+                                        FTP_Tool.Services.ThemeService.ApplyTheme(FTP_Tool.Services.ThemeService.Theme.Dark);
+                                    else
+                                        FTP_Tool.Services.ThemeService.ApplyTheme(FTP_Tool.Services.ThemeService.Theme.Light);
+                                }
+                            }
+                            catch { }
+                        };
+                    }
+                }
+                catch { }
 
                 txtMaxRetries.LostFocus += (s, ev) =>
                 {
@@ -438,19 +503,24 @@ namespace FTP_Tool
                 }
 
                 // Restore last page without animation
-                try { var page = string.IsNullOrWhiteSpace(_settings.LastPage) ? "Monitor" : _settings.LastPage!; ShowPage(page, animate: false); } catch { }
+                try
+                {
+                    var page = string.IsNullOrWhiteSpace(_settings?.LastPage) ? "Monitor" : (_settings.LastPage ?? "Monitor");
+                    ShowPage(page, animate: false);
+                }
+                catch { }
 
                 _isLoaded = true;
 
                 // Auto-start monitoring if requested and inputs valid
-                try { if (_settings.StartMonitoringOnLaunch && ValidateInputs()) BtnStart_Click(this, new RoutedEventArgs()); } catch (Exception ex) { Log($"Failed to auto-start monitoring: {ex.Message}", LogLevel.Error); }
+                try { if (_settings != null && _settings.StartMonitoringOnLaunch && ValidateInputs()) BtnStart_Click(this, new RoutedEventArgs()); } catch (Exception ex) { Log($"Failed to auto-start monitoring: {ex.Message}", LogLevel.Error); }
 
                 // Handle startup args
                 try
                 {
                     var args = Environment.GetCommandLineArgs();
                     bool startedFromRun = args.Any(a => string.Equals(a, "--startup", StringComparison.OrdinalIgnoreCase) || string.Equals(a, "/startup", StringComparison.OrdinalIgnoreCase));
-                    if (startedFromRun && _settings.StartMinimizedOnStartup) HideToTray();
+                    if (startedFromRun && _settings != null && _settings.StartMinimizedOnStartup) HideToTray();
                 }
                 catch { }
             }

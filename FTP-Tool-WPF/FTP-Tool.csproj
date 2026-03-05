@@ -13,6 +13,7 @@
     <Win32Icon>icon.ico</Win32Icon>
     <!-- Enable source-generation interceptors for the configuration binder -->
     <InterceptorsNamespaces>$(InterceptorsNamespaces);Microsoft.Extensions.Configuration.Binder.SourceGeneration</InterceptorsNamespaces>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
   </PropertyGroup>
 
   <ItemGroup>

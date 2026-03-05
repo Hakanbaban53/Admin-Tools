@@ -3,6 +3,15 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:local="clr-namespace:FTP_Tool">
     <Application.Resources>
-         
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <!-- Shared resources (base brushes, styles) -->
+                <ResourceDictionary Source="Theme/SharedResources.xaml"/>
+                <!-- Theme brushes (light by default) - theme may override shared keys -->
+                <ResourceDictionary Source="Theme/LightTheme.xaml"/>
+                <!-- Controls/styles that reference theme brushes -->
+                <ResourceDictionary Source="Theme/Controls.xaml"/>
+            </ResourceDictionary.MergedDictionaries>
+        </ResourceDictionary>
     </Application.Resources>
 </Application>
